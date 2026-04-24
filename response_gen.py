@@ -16,14 +16,18 @@ from sklearn.cluster import KMeans
 
 load_dotenv()
 
+GEMINI_KEY    = os.getenv("GEMINI_API_KEY", "").strip()
 GROQ_KEY      = os.getenv("GROQ_API_KEY", "").strip()
 ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY", "").strip()
+GEMINI_MODEL  = "gemini-2.0-flash"
 GROQ_MODEL    = "llama-3.3-70b-versatile"
 CLAUDE_MODEL  = "claude-sonnet-4-6"
 
 
 def active_llm() -> str:
     """Return which LLM is active."""
+    if GEMINI_KEY:
+        return f"gemini/{GEMINI_MODEL}"
     if GROQ_KEY:
         return f"groq/{GROQ_MODEL}"
     if ANTHROPIC_KEY:
@@ -33,9 +37,19 @@ def active_llm() -> str:
 
 def call_llm(prompt: str, max_tokens: int = 1000) -> str:
     """
-    Call Groq if GROQ_API_KEY is set, else fall back to Claude.
-    Raises RuntimeError if neither key is available.
+    Priority: Gemini → Groq → Claude.
+    Raises RuntimeError if no key is available.
     """
+    if GEMINI_KEY:
+        import google.generativeai as genai
+        genai.configure(api_key=GEMINI_KEY)
+        model = genai.GenerativeModel(
+            GEMINI_MODEL,
+            generation_config=genai.GenerationConfig(max_output_tokens=max_tokens, temperature=0.3),
+        )
+        resp = model.generate_content(prompt)
+        return resp.text.strip()
+
     if GROQ_KEY:
         from groq import Groq
         client = Groq(api_key=GROQ_KEY)
@@ -58,7 +72,7 @@ def call_llm(prompt: str, max_tokens: int = 1000) -> str:
         return resp.content[0].text.strip()
 
     raise RuntimeError(
-        "No LLM key found. Add GROQ_API_KEY or ANTHROPIC_API_KEY to .env"
+        "No LLM key found. Add GEMINI_API_KEY, GROQ_API_KEY, or ANTHROPIC_API_KEY to .env"
     )
 
 

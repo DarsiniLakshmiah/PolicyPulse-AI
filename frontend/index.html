@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
   <style>
     :root {
       --navy: #0a1628;
@@ -218,6 +219,15 @@
     .conf-high { color: var(--green); font-size: .68rem; }
     .conf-medium { color: var(--yellow); font-size: .68rem; }
 
+    /* ── Network Graph ── */
+    .net-legend { display: flex; flex-wrap: wrap; gap: .35rem .9rem; margin-bottom: .65rem; }
+    .net-legend-item { display: flex; align-items: center; gap: .35rem; font-size: .74rem; color: var(--gray-700); }
+    .net-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .net-filters { display: flex; flex-wrap: wrap; gap: .35rem .75rem; margin-bottom: .75rem; align-items: center; }
+    .net-filter-label { display: flex; align-items: center; gap: .3rem; font-size: .76rem; cursor: pointer; color: var(--gray-700); user-select: none; }
+    #networkSvgContainer { border: 1px solid var(--gray-200); border-radius: 8px; background: #f8fafc; min-height: 500px; position: relative; overflow: hidden; }
+    .net-tooltip { position: absolute; background: white; border: 1px solid var(--gray-200); border-radius: 8px; padding: .7rem .9rem; max-width: 230px; box-shadow: 0 4px 16px rgba(0,0,0,.12); z-index: 20; pointer-events: none; line-height: 1.45; }
+
     /* ── APA Compliance Panel ── */
     .apa-response-layout { display: grid; grid-template-columns: 1fr 268px; gap: 1rem; align-items: start; }
     .apa-panel { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 8px; padding: .85rem 1rem; }
@@ -271,6 +281,7 @@
   </button>
   <button class="tab-btn" onclick="switchTab('mapping', this)">🗺️ CFR Mapping</button>
   <button class="tab-btn" onclick="switchTab('ogc', this)">⚖️ OGC Risk</button>
+  <button class="tab-btn" onclick="switchTab('network', this)">🕸️ Network</button>
 </nav>
 
 <main class="content">
@@ -303,9 +314,12 @@
         <div class="card-title">Upload Comments (TXT / CSV)</div>
         <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
           <div style="font-size:1.5rem;margin-bottom:.3rem">📄</div>
-          <div style="font-size:.85rem;color:var(--gray-500)">Drop files or click to upload</div>
-          <div style="font-size:.73rem;color:var(--gray-400);margin-top:.2rem">One comment per line or paragraph</div>
-          <input type="file" id="fileInput" style="display:none" accept=".txt,.csv" multiple onchange="handleUpload(event)">
+          <div style="font-size:.85rem;color:var(--gray-500)">Drop file or click to upload</div>
+          <div style="font-size:.73rem;color:var(--gray-400);margin-top:.2rem">
+            CSV: needs a <code>comment</code> or <code>text</code> column · optional <code>name</code>, <code>id</code>, <code>organization</code><br>
+            TXT: one comment per paragraph (blank line between)
+          </div>
+          <input type="file" id="fileInput" style="display:none" accept=".txt,.csv" onchange="handleUpload(event)">
         </div>
         <div id="uploadStatus" class="mt-1"></div>
       </div>
@@ -392,8 +406,8 @@
     </div>
     <div id="responsesContent" style="display:none">
       <div class="alert alert-info mb-2">
-        ℹ️ Responses are Claude-drafted in Federal Register preamble format. Edit before use.
-        Clusters are built by TF-IDF KMeans — Claude names each cluster.
+        ℹ️ Responses are drafted in Federal Register preamble format. Edit before use.
+        Clusters are built by TF-IDF KMeans.
       </div>
       <div id="clusterList"></div>
     </div>
@@ -474,12 +488,93 @@
 
       <div class="card">
         <div class="flex items-center justify-between mb-2">
-          <div class="card-title" style="margin:0">OGC Memorandum (Llama 3.3 / Claude-drafted)</div>
+          <div class="card-title" style="margin:0">OGC Memorandum</div>
           <div class="flex gap-1">
             <button class="btn btn-secondary btn-sm" onclick="copyMemo()">📋 Copy</button>
           </div>
         </div>
         <textarea class="memo-area" id="memoArea" placeholder="OGC memo will appear here after analysis..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       TAB 6 — NETWORK GRAPH
+  ═══════════════════════════════════════════════ -->
+  <div class="tab-panel" id="panel-network">
+    <div id="networkEmpty" class="empty-state">
+      <div class="icon">🕸️</div>
+      <p>Run ML Analysis first, then build the graph to see who is orchestrating what.</p>
+    </div>
+    <div id="networkContent" style="display:none">
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-value" id="net-stat-nodes">—</div><div class="stat-label">Total Nodes</div></div>
+        <div class="stat-card"><div class="stat-value" id="net-stat-orgs" style="color:var(--red)">—</div><div class="stat-label">Orgs / Campaigns</div></div>
+        <div class="stat-card"><div class="stat-value" id="net-stat-cites" style="color:#0891b2">—</div><div class="stat-label">Shared Citations</div></div>
+        <div class="stat-card"><div class="stat-value" id="net-stat-edges" style="color:var(--gray-500)">—</div><div class="stat-label">Connections</div></div>
+      </div>
+      <div class="card">
+        <div class="flex items-center justify-between mb-2">
+          <div class="card-title" style="margin:0">Comment Coordination Network</div>
+          <div class="flex gap-1">
+            <button class="btn btn-secondary btn-sm" id="networkLoadBtn" onclick="loadNetwork()">↺ Rebuild</button>
+            <button class="btn btn-accent btn-sm" id="enrichBtn" onclick="enrichOrgs()" title="Enrich org nodes with Crustdata firmographic data">🏢 Enrich Orgs</button>
+          </div>
+        </div>
+
+        <div class="net-legend">
+          <div class="net-legend-item"><div class="net-dot" style="background:#2563eb"></div>Comment</div>
+          <div class="net-legend-item"><div class="net-dot" style="background:#dc2626"></div>Law Firm</div>
+          <div class="net-legend-item"><div class="net-dot" style="background:#7c3aed"></div>Advocacy Org</div>
+          <div class="net-legend-item"><div class="net-dot" style="background:#d97706"></div>Industry Group</div>
+          <div class="net-legend-item"><div class="net-dot" style="background:#059669"></div>Labor Org</div>
+          <div class="net-legend-item"><div class="net-dot" style="background:#db2777"></div>Form Campaign</div>
+          <div class="net-legend-item"><div class="net-dot" style="background:#0891b2"></div>Shared Citation</div>
+          <div class="net-legend-item" style="margin-left:auto;font-size:.68rem;color:var(--gray-400);font-family:'IBM Plex Mono',monospace">scroll to zoom · drag to pan · hover for details</div>
+        </div>
+
+        <div class="net-filters">
+          <span style="font-size:.7rem;color:var(--gray-500);font-weight:700;text-transform:uppercase;letter-spacing:.05em">Show:</span>
+          <label class="net-filter-label"><input type="checkbox" class="net-filter" value="comment" checked onchange="applyNetworkFilter()"> Comments</label>
+          <label class="net-filter-label"><input type="checkbox" class="net-filter" value="law_firm" checked onchange="applyNetworkFilter()"> Law Firms</label>
+          <label class="net-filter-label"><input type="checkbox" class="net-filter" value="advocacy_org" checked onchange="applyNetworkFilter()"> Advocacy Orgs</label>
+          <label class="net-filter-label"><input type="checkbox" class="net-filter" value="industry_group" checked onchange="applyNetworkFilter()"> Industry Groups</label>
+          <label class="net-filter-label"><input type="checkbox" class="net-filter" value="labor_org" checked onchange="applyNetworkFilter()"> Labor Orgs</label>
+          <label class="net-filter-label"><input type="checkbox" class="net-filter" value="campaign" checked onchange="applyNetworkFilter()"> Campaigns</label>
+          <label class="net-filter-label"><input type="checkbox" class="net-filter" value="citation" checked onchange="applyNetworkFilter()"> Shared Citations</label>
+        </div>
+
+        <div style="position:relative">
+          <div id="networkSvgContainer"></div>
+          <div id="networkTooltip" class="net-tooltip" style="display:none"></div>
+        </div>
+        <div id="networkError" class="alert alert-error mt-1" style="display:none"></div>
+      </div>
+
+      <!-- Org Intelligence panel (populated after Crustdata enrichment) -->
+      <div id="orgIntelCard" class="card mt-2" style="display:none">
+        <div class="flex items-center justify-between mb-2">
+          <div class="card-title" style="margin:0">🏢 Org Intelligence <span style="font-size:.75rem;font-weight:400;color:var(--gray-500)" id="orgIntelMeta"></span></div>
+          <span style="font-size:.72rem;color:var(--gray-400);font-family:'IBM Plex Mono',monospace">Crustdata · high-significance orgs only</span>
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Organization</th>
+                <th>Industry</th>
+                <th>Headcount</th>
+                <th>Growth QoQ</th>
+                <th>Funding</th>
+                <th>Last Round</th>
+                <th>HQ</th>
+                <th>Job Openings</th>
+                <th>Links</th>
+              </tr>
+            </thead>
+            <tbody id="orgIntelBody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -500,6 +595,7 @@ let state = {
   sortDir: -1,
   filter: "all",
   courtCases: [],
+  enrichedOrgs: {},   // org_name → Crustdata firmographic data
 };
 let cfrChart = null, sigChart = null;
 
@@ -594,17 +690,41 @@ function renderPreview(count) {
 // ─────────────────────────────────────────────
 // FILE UPLOAD
 // ─────────────────────────────────────────────
-function handleUpload(e) {
-  const files = Array.from(e.target.files);
+async function handleUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
   const status = document.getElementById("uploadStatus");
-  status.innerHTML = `<div class="alert alert-info">Reading ${files.length} file(s)...</div>`;
-  files.forEach(file => {
-    const reader = new FileReader();
-    reader.onload = ev => {
-      status.innerHTML = `<div class="alert alert-success">✓ ${file.name} ready — use Import tab to analyze</div>`;
-    };
-    reader.readAsText(file);
-  });
+  status.innerHTML = `<div class="alert alert-info"><span class="spinner spinner-dark"></span> Uploading ${file.name}...</div>`;
+
+  const form = new FormData();
+  form.append("file", file);
+
+  try {
+    const r = await fetch(`${API}/api/upload`, { method: "POST", body: form });
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+
+    state.comments = [];
+    state.scored = [];
+
+    const p = data.policy;
+    document.getElementById("docketBanner").style.display = "block";
+    document.getElementById("docketTitle").textContent = p.title;
+    document.getElementById("docketAgency").textContent = p.agency;
+    document.getElementById("docketCount").textContent = `${data.comment_count} comments loaded`;
+    document.getElementById("docketSummary").textContent = p.summary || "";
+    document.getElementById("loadedCount").textContent = `(${data.comment_count} loaded)`;
+    document.getElementById("analyzeSection").style.display = "block";
+    document.getElementById("cnt-comments").textContent = data.comment_count;
+    renderPreview(data.comment_count);
+
+    status.innerHTML = `<div class="alert alert-success">✓ ${data.comment_count} comments loaded from <strong>${file.name}</strong></div>`;
+  } catch (err) {
+    status.innerHTML = `<div class="alert alert-error">Error: ${err.message}</div>`;
+  }
+
+  // reset so same file can be re-uploaded
+  e.target.value = "";
 }
 
 const dz = document.getElementById("dropZone");
@@ -636,7 +756,7 @@ async function runAnalysis() {
     const data = await r.json();
     if (data.error) throw new Error(data.error);
 
-    setProgress(85, "Claude drafting preamble responses...");
+    setProgress(85, "Drafting preamble responses...");
     state.scored = data.comments || [];
     state.clusters = data.clusters || [];
     state.ogcMemo = data.ogc_memo || "";
@@ -652,6 +772,7 @@ async function runAnalysis() {
     renderResponsesTab();
     renderMappingTab();
     renderOGCTab(data.stats);
+    loadNetwork();
   } catch (e) {
     document.getElementById("progressAlert").innerHTML =
       `<span style="color:var(--red)">Error: ${e.message}</span>`;
@@ -760,7 +881,7 @@ function renderResponsesTab() {
         </div>
       </div>
       <div class="cluster-body" id="cb-${i}">
-        <div class="section-label mb-1">Claude-Drafted Federal Register Response</div>
+        <div class="section-label mb-1">Draft Federal Register Response</div>
         <div class="apa-response-layout">
           <textarea class="response-textarea" id="resp-${i}">${h(cl.draft_response || "")}</textarea>
           <div class="apa-panel">
@@ -1023,6 +1144,289 @@ async function deepCheck(i) {
   } catch {}
   btn.innerHTML = "🤖 AI Check";
   btn.disabled = false;
+}
+
+// ─────────────────────────────────────────────
+// NETWORK GRAPH (D3 force-directed)
+// ─────────────────────────────────────────────
+let networkSim = null;
+let networkData = null;
+
+const NODE_COLOR = {
+  comment:       "#2563eb",
+  law_firm:      "#dc2626",
+  advocacy_org:  "#7c3aed",
+  industry_group:"#d97706",
+  labor_org:     "#059669",
+  campaign:      "#db2777",
+  citation:      "#0891b2",
+};
+const NODE_LABEL = {
+  comment:       "Comment",
+  law_firm:      "Law Firm",
+  advocacy_org:  "Advocacy Org",
+  industry_group:"Industry Group",
+  labor_org:     "Labor Org",
+  campaign:      "Form Campaign",
+  citation:      "Shared Citation",
+};
+const EDGE_COLOR = {
+  authored_by:     "#dc2626",
+  form_letter:     "#db2777",
+  shared_citation: "#0891b2",
+};
+
+async function loadNetwork() {
+  const btn = document.getElementById("networkLoadBtn");
+  if (btn) { btn.innerHTML = '<span class="spinner spinner-dark"></span>'; btn.disabled = true; }
+  const errEl = document.getElementById("networkError");
+  if (errEl) errEl.style.display = "none";
+
+  try {
+    const r = await fetch(`${API}/api/network`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
+    });
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+    networkData = data;
+
+    document.getElementById("networkEmpty").style.display = "none";
+    document.getElementById("networkContent").style.display = "block";
+    document.getElementById("net-stat-nodes").textContent  = data.stats.total_nodes;
+    document.getElementById("net-stat-orgs").textContent   = data.stats.org_nodes;
+    document.getElementById("net-stat-cites").textContent  = data.stats.citation_nodes;
+    document.getElementById("net-stat-edges").textContent  = data.stats.total_edges;
+
+    renderNetwork(data);
+  } catch (e) {
+    if (errEl) { errEl.textContent = `Error: ${e.message}`; errEl.style.display = "block"; }
+  }
+  if (btn) { btn.innerHTML = "↺ Rebuild"; btn.disabled = false; }
+}
+
+function getActiveNodeTypes() {
+  const cbs = document.querySelectorAll(".net-filter:checked");
+  return new Set(cbs.length ? [...cbs].map(cb => cb.value) : Object.keys(NODE_COLOR));
+}
+
+function applyNetworkFilter() {
+  if (networkData) renderNetwork(networkData);
+}
+
+function renderNetwork(data) {
+  const container = document.getElementById("networkSvgContainer");
+  container.innerHTML = "";
+  if (networkSim) { networkSim.stop(); networkSim = null; }
+
+  const W = container.clientWidth || 860;
+  const H = 500;
+
+  // Normalize edges so D3 mutation across re-renders doesn't break the filter
+  const activeTypes = getActiveNodeTypes();
+  const filtNodes = data.nodes.filter(n => activeTypes.has(n.type));
+  const filtIds   = new Set(filtNodes.map(n => n.id));
+  const filtEdges = data.edges
+    .map(e => ({
+      ...e,
+      source: typeof e.source === "object" ? e.source.id : e.source,
+      target: typeof e.target === "object" ? e.target.id : e.target,
+    }))
+    .filter(e => filtIds.has(e.source) && filtIds.has(e.target));
+
+  // Degree for node sizing
+  const deg = {};
+  filtNodes.forEach(n => { deg[n.id] = 0; });
+  filtEdges.forEach(e => { deg[e.source] = (deg[e.source] || 0) + 1; deg[e.target] = (deg[e.target] || 0) + 1; });
+  const r = d => (d.type === "comment" ? 6 : 11) + Math.min(deg[d.id] || 0, 10) * 1.4;
+
+  const svg = d3.select(container).append("svg")
+    .attr("width", "100%").attr("height", H)
+    .call(d3.zoom().scaleExtent([0.25, 4]).on("zoom", ev => g.attr("transform", ev.transform)));
+
+  // Arrow markers per edge type
+  const defs = svg.append("defs");
+  Object.entries(EDGE_COLOR).forEach(([type, color]) => {
+    defs.append("marker").attr("id", `arr-${type}`)
+      .attr("viewBox", "0 -5 10 10").attr("refX", 20).attr("refY", 0)
+      .attr("markerWidth", 5).attr("markerHeight", 5).attr("orient", "auto")
+      .append("path").attr("d", "M0,-5L10,0L0,5").attr("fill", color).attr("opacity", .55);
+  });
+
+  const g = svg.append("g");
+
+  const link = g.append("g").selectAll("line").data(filtEdges).join("line")
+    .attr("stroke", e => EDGE_COLOR[e.type] || "#94a3b8")
+    .attr("stroke-width", e => e.weight || 1)
+    .attr("stroke-opacity", .4)
+    .attr("marker-end", e => `url(#arr-${e.type})`);
+
+  const node = g.append("g").selectAll("circle").data(filtNodes).join("circle")
+    .attr("r", r)
+    .attr("fill", d => NODE_COLOR[d.type] || "#64748b")
+    .attr("fill-opacity", .88)
+    .attr("stroke", d => state.enrichedOrgs[d.name] ? "#f59e0b" : "white")
+    .attr("stroke-width", d => state.enrichedOrgs[d.name] ? 2.5 : 1.5)
+    .style("cursor", "pointer")
+    .call(d3.drag()
+      .on("start", (ev, d) => { if (!ev.active) networkSim.alphaTarget(.3).restart(); d.fx = d.x; d.fy = d.y; })
+      .on("drag",  (ev, d) => { d.fx = ev.x; d.fy = ev.y; })
+      .on("end",   (ev, d) => { if (!ev.active) networkSim.alphaTarget(0); d.fx = null; d.fy = null; }));
+
+  const label = g.append("g").selectAll("text")
+    .data(filtNodes.filter(d => d.type !== "comment" || (deg[d.id] || 0) > 1))
+    .join("text")
+    .attr("font-size",   d => d.type === "comment" ? "8px" : "10px")
+    .attr("font-weight", d => d.type !== "comment" ? "600" : "400")
+    .attr("font-family", "'Plus Jakarta Sans', sans-serif")
+    .attr("fill",        d => d.type === "comment" ? "#64748b" : "#0f172a")
+    .attr("text-anchor", "middle")
+    .attr("dy", d => -r(d) - 3)
+    .text(d => d.name.length > 24 ? d.name.slice(0, 22) + "…" : d.name)
+    .style("pointer-events", "none");
+
+  // Hover tooltip
+  const tip = document.getElementById("networkTooltip");
+  node
+    .on("mouseover", (ev, d) => {
+      const conn = new Set([d.id]);
+      filtEdges.forEach(e => {
+        if (e.source === d.id || (e.source.id === d.id)) conn.add(typeof e.target === "object" ? e.target.id : e.target);
+        if (e.target === d.id || (e.target.id === d.id)) conn.add(typeof e.source === "object" ? e.source.id : e.source);
+      });
+      node.attr("fill-opacity", n => conn.has(n.id) ? 1 : .1);
+      link.attr("stroke-opacity", e => {
+        const s = typeof e.source === "object" ? e.source.id : e.source;
+        const t = typeof e.target === "object" ? e.target.id : e.target;
+        return conn.has(s) && conn.has(t) ? .85 : .04;
+      });
+      tip.style.display = "block";
+      tip.innerHTML = `
+        <div style="font-weight:700;font-size:.8rem;color:var(--navy);margin-bottom:.3rem">${h(d.name)}</div>
+        <div style="margin-bottom:.25rem"><span style="background:${NODE_COLOR[d.type]}22;color:${NODE_COLOR[d.type]};font-size:.68rem;font-weight:700;padding:.1rem .35rem;border-radius:3px">${h(NODE_LABEL[d.type] || d.type)}</span></div>
+        ${d.text_preview ? `<div style="font-size:.71rem;color:var(--gray-600);margin-top:.25rem;line-height:1.4">"${h(d.text_preview)}${(d.text_preview||"").length >= 100 ? "…" : ""}"</div>` : ""}
+        ${d.significance_score != null ? `<div style="margin-top:.25rem;font-size:.71rem">Score: <strong>${d.significance_score}</strong> · Litigation: <strong>${d.litigation_risk || "—"}</strong></div>` : ""}
+        ${d.comment_count != null ? `<div style="font-size:.71rem;color:var(--gray-500)">Connected to <strong>${d.comment_count}</strong> comment${d.comment_count !== 1 ? "s" : ""}</div>` : ""}
+        <div style="font-size:.68rem;color:var(--gray-400);margin-top:.15rem">Connections: ${deg[d.id] || 0}</div>
+        ${d.type !== "comment" && d.type !== "citation" ? enrichTooltipHtml(d.name) : ""}`;
+    })
+    .on("mousemove", ev => {
+      const rect = container.getBoundingClientRect();
+      tip.style.left = (ev.clientX - rect.left + 14) + "px";
+      tip.style.top  = Math.max(0, ev.clientY - rect.top - 20) + "px";
+    })
+    .on("mouseout", () => {
+      node.attr("fill-opacity", .88);
+      link.attr("stroke-opacity", .4);
+      tip.style.display = "none";
+    });
+
+  networkSim = d3.forceSimulation(filtNodes)
+    .force("link", d3.forceLink(filtEdges).id(d => d.id)
+      .distance(e => e.type === "form_letter" ? 45 : e.type === "authored_by" ? 75 : 95)
+      .strength(.65))
+    .force("charge", d3.forceManyBody().strength(d => d.type === "comment" ? -70 : -180))
+    .force("center", d3.forceCenter(W / 2, H / 2))
+    .force("collision", d3.forceCollide().radius(d => r(d) + 5))
+    .on("tick", () => {
+      link.attr("x1", e => e.source.x).attr("y1", e => e.source.y)
+          .attr("x2", e => e.target.x).attr("y2", e => e.target.y);
+      node.attr("cx", d => d.x).attr("cy", d => d.y);
+      label.attr("x", d => d.x).attr("y", d => d.y);
+    });
+}
+
+// ─────────────────────────────────────────────
+// CRUSTDATA ORG ENRICHMENT
+// ─────────────────────────────────────────────
+async function enrichOrgs() {
+  const btn = document.getElementById("enrichBtn");
+  if (!state.scored.length) {
+    alert("Run ML Analysis first, then enrich.");
+    return;
+  }
+  btn.innerHTML = '<span class="spinner spinner-dark"></span> Enriching...';
+  btn.disabled = true;
+
+  try {
+    const r = await fetch(`${API}/api/enrich`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ threshold: 60 }),
+    });
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+
+    state.enrichedOrgs = data.orgs || {};
+    renderOrgIntelligence(data.enriched_count);
+    // Rebuild network so tooltips reflect new data
+    if (networkData) renderNetwork(networkData);
+  } catch (e) {
+    alert(`Enrichment error: ${e.message}`);
+  }
+
+  btn.innerHTML = "🏢 Enrich Orgs";
+  btn.disabled = false;
+}
+
+function renderOrgIntelligence(count) {
+  const card = document.getElementById("orgIntelCard");
+  const meta = document.getElementById("orgIntelMeta");
+  const body = document.getElementById("orgIntelBody");
+
+  if (!count || !Object.keys(state.enrichedOrgs).length) {
+    card.style.display = "none";
+    return;
+  }
+
+  card.style.display = "block";
+  meta.textContent = `— ${count} orgs enriched`;
+
+  const fmt = n => n == null ? "—" : Number(n).toLocaleString();
+  const fmtUSD = n => n == null ? "—" : `$${(n / 1e6).toFixed(1)}M`;
+  const fmtPct = n => n == null ? "—" : `${n > 0 ? "▲" : "▼"} ${Math.abs(n).toFixed(1)}%`;
+  const pctColor = n => n == null ? "" : n > 0 ? "color:var(--green)" : "color:var(--red)";
+
+  body.innerHTML = Object.entries(state.enrichedOrgs).map(([org, d]) => `
+    <tr>
+      <td style="font-weight:600;max-width:180px">${h(org)}</td>
+      <td style="font-size:.78rem;color:var(--gray-600)">${h(d.industry || "—")}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:.78rem">${fmt(d.headcount)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:.78rem;${pctColor(d.headcount_growth)}">${fmtPct(d.headcount_growth)}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:.78rem">${fmtUSD(d.total_funding_usd)}</td>
+      <td>${d.last_round ? `<span class="stance-badge stance-neutral">${h(d.last_round)}</span>` : "—"}</td>
+      <td style="font-size:.78rem">${[d.city, d.country].filter(Boolean).map(h).join(", ") || "—"}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:.78rem">${fmt(d.job_openings)}</td>
+      <td>
+        ${d.website  ? `<a href="https://${h(d.website)}"  target="_blank" style="font-size:.72rem;color:var(--blue-light);margin-right:.4rem">🌐</a>` : ""}
+        ${d.linkedin ? `<a href="${h(d.linkedin)}" target="_blank" style="font-size:.72rem;color:var(--blue-light)">in</a>` : ""}
+      </td>
+    </tr>`).join("") || '<tr><td colspan="9" style="text-align:center;color:var(--gray-400);padding:1.5rem">No orgs enriched yet.</td></tr>';
+}
+
+function enrichTooltipHtml(orgName) {
+  const d = state.enrichedOrgs[orgName];
+  if (!d) return "";
+  const fmt = n => n == null ? "—" : Number(n).toLocaleString();
+  const fmtUSD = n => n == null ? "—" : `$${(n / 1e6).toFixed(1)}M`;
+  const fmtPct = n => {
+    if (n == null) return "—";
+    const arrow = n > 0 ? "▲" : "▼";
+    const color = n > 0 ? "var(--green)" : "var(--red)";
+    return `<span style="color:${color}">${arrow} ${Math.abs(n).toFixed(1)}%</span>`;
+  };
+  return `
+    <div style="margin-top:.45rem;padding-top:.45rem;border-top:1px solid var(--gray-200)">
+      <div style="font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--gray-400);margin-bottom:.3rem">Crustdata</div>
+      ${d.industry   ? `<div style="font-size:.71rem;color:var(--gray-600);margin-bottom:.2rem">📊 ${h(d.industry)}</div>` : ""}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.15rem .5rem;font-size:.7rem">
+        <span style="color:var(--gray-500)">Headcount</span><span style="font-family:'IBM Plex Mono',monospace">${fmt(d.headcount)} ${fmtPct(d.headcount_growth)}</span>
+        <span style="color:var(--gray-500)">Funding</span><span style="font-family:'IBM Plex Mono',monospace">${fmtUSD(d.total_funding_usd)}${d.last_round ? ` <span style="color:var(--gray-400);font-size:.64rem">(${h(d.last_round)})</span>` : ""}</span>
+        ${d.city || d.country ? `<span style="color:var(--gray-500)">HQ</span><span>${[d.city, d.country].filter(Boolean).map(h).join(", ")}</span>` : ""}
+        ${d.job_openings != null ? `<span style="color:var(--gray-500)">Open roles</span><span style="font-family:'IBM Plex Mono',monospace">${fmt(d.job_openings)}</span>` : ""}
+        ${d.founded ? `<span style="color:var(--gray-500)">Founded</span><span>${d.founded}</span>` : ""}
+      </div>
+      ${d.website ? `<a href="https://${h(d.website)}" target="_blank" style="font-size:.68rem;color:var(--blue-light);display:block;margin-top:.3rem">🌐 ${h(d.website)}</a>` : ""}
+    </div>`;
 }
 
 function updateApaPanel(i, data, fromAI) {

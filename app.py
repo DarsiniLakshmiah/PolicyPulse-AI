@@ -300,6 +300,112 @@ def process_comments():
     })
 
 
+@app.route("/api/upload", methods=["POST"])
+def upload_comments():
+    """
+    Parse uploaded CSV or TXT file and load comments into session.
+
+    CSV columns detected automatically (case-insensitive):
+      text  : comment, text, body, comment_text
+      name  : name, commenter, first_name + last_name, organization
+      id    : id, document_id, comment_id, objectid
+    TXT: split by blank line (paragraphs); fallback to one line each.
+    """
+    import csv
+    import io
+
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    f = request.files["file"]
+    filename = f.filename or "upload"
+    content = f.read().decode("utf-8-sig", errors="replace")  # strip BOM
+
+    comments = []
+
+    if filename.lower().endswith(".csv"):
+        reader = csv.DictReader(io.StringIO(content))
+        raw_headers = reader.fieldnames or []
+        headers = [h.lower().strip() for h in raw_headers]
+        header_map = {h.lower().strip(): h for h in raw_headers}
+
+        def pick(candidates):
+            for c in candidates:
+                if c in headers:
+                    return header_map[c]
+            return None
+
+        text_col  = pick(["comment", "text", "body", "comment_text", "comment text"])
+        name_col  = pick(["name", "commenter", "commenter_name", "full_name", "author"])
+        fname_col = pick(["first_name", "firstname", "first name"])
+        lname_col = pick(["last_name", "lastname", "last name"])
+        id_col    = pick(["id", "document_id", "comment_id", "objectid"])
+        org_col   = pick(["organization", "org", "company"])
+
+        for i, row in enumerate(reader):
+            text = row.get(text_col, "").strip() if text_col else ""
+            if not text or len(text) < 5:
+                # fallback: first non-empty column value
+                text = next((v.strip() for v in row.values() if v and len(v.strip()) > 5), "")
+            if len(text) < 5:
+                continue
+
+            name = ""
+            if name_col:
+                name = row.get(name_col, "").strip()
+            elif fname_col or lname_col:
+                name = f"{row.get(fname_col or '', '').strip()} {row.get(lname_col or '', '').strip()}".strip()
+            if org_col:
+                org = row.get(org_col, "").strip()
+                if org and org not in name:
+                    name = f"{name}, {org}".strip(", ") if name else org
+            name = name or "Public Commenter"
+
+            comment_id = row.get(id_col, f"U-{i+1:03d}").strip() if id_col else f"U-{i+1:03d}"
+            comments.append({"id": comment_id, "name": name, "text": text})
+
+    else:  # TXT — split by paragraph, fallback to lines
+        paragraphs = [p.strip() for p in content.split("\n\n") if len(p.strip()) > 10]
+        if len(paragraphs) < 2:
+            paragraphs = [ln.strip() for ln in content.splitlines() if len(ln.strip()) > 10]
+        for i, para in enumerate(paragraphs):
+            comments.append({"id": f"U-{i+1:03d}", "name": "Public Commenter", "text": para})
+
+    if not comments:
+        return jsonify({"error": "No valid comments found. CSV needs a 'comment' or 'text' column."}), 400
+
+    if not session_data.get("policy"):
+        session_data["policy"] = {
+            "title": f"Uploaded: {filename}",
+            "agency": "Uploaded Dataset",
+            "docket": filename,
+            "summary": f"{len(comments)} comments loaded from {filename}.",
+        }
+
+    session_data["comments"] = comments
+    session_data["scored_comments"] = []
+    session_data["clusters"] = []
+    session_data["ogc_memo"] = ""
+
+    return jsonify({
+        "policy": session_data["policy"],
+        "comment_count": len(comments),
+        "court_cases": [],
+    })
+
+
+@app.route("/api/network", methods=["POST"])
+def network():
+    """Build comment coordination network graph from scored comments."""
+    from ml_scorer import build_comment_network
+
+    scored = session_data.get("scored_comments", [])
+    if not scored:
+        return jsonify({"error": "No scored comments. Run /api/process first."}), 400
+
+    return jsonify(build_comment_network(scored))
+
+
 @app.route("/api/apa-check", methods=["POST"])
 def apa_check():
     """
@@ -335,6 +441,34 @@ def apa_check():
     return jsonify(result)
 
 
+@app.route("/api/enrich", methods=["POST"])
+def enrich_orgs():
+    """
+    Enrich high-significance commenter orgs via Crustdata.
+    Only enriches orgs from comments with significance_score >= threshold (default 60).
+    Results stored in session and returned for the frontend.
+    """
+    from crustdata import enrich_scored_comments, _token
+
+    if not _token():
+        return jsonify({"error": "CRUSTDATA_API_KEY not set in .env"}), 400
+
+    scored = session_data.get("scored_comments", [])
+    if not scored:
+        return jsonify({"error": "Run /api/process first."}), 400
+
+    body = request.get_json(force=True)
+    threshold = int(body.get("threshold", 60))
+
+    enriched = enrich_scored_comments(scored, sig_threshold=threshold)
+    session_data["enriched_orgs"] = enriched
+
+    return jsonify({
+        "enriched_count": len(enriched),
+        "orgs": enriched,
+    })
+
+
 @app.route("/api/health", methods=["GET"])
 def health():
     """Health check — confirms ML model is loaded and shows active LLM."""
@@ -346,6 +480,7 @@ def health():
         "llm": llm,
         "regulations_gov_key": "custom" if API_KEY != "DEMO_KEY" else "DEMO_KEY",
         "courtlistener": "authenticated" if os.getenv("COURTLISTENER_TOKEN", "").strip() else "public",
+        "crustdata": "configured" if os.getenv("CRUSTDATA_API_KEY", "").strip() else "not configured",
         "message": "Run python train.py if model_loaded is false",
     })
 

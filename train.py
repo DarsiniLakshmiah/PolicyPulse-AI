@@ -51,22 +51,35 @@ def fetch_comments(docket_id: str, max_comments: int = 50) -> list:
         return []
 
     comments = []
+    consecutive_failures = 0
     for comment_id in ids[:max_comments]:
-        try:
-            r2 = requests.get(
-                f"{REGULATIONS_API}/comments/{comment_id}",
-                params={"api_key": API_KEY},
-                timeout=15,
-            )
-            r2.raise_for_status()
-            attrs = r2.json().get("data", {}).get("attributes", {})
-            text = attrs.get("comment", "")
-            if text and len(text) > 20:
-                comments.append({"id": comment_id, "text": text, "docket": docket_id})
-            time.sleep(0.3)  # stay within rate limit
-        except Exception as e:
-            print(f"  Detail fetch error for {comment_id}: {e}")
-            continue
+        if consecutive_failures >= 3:
+            print(f"  Too many consecutive failures for {docket_id} — skipping remaining IDs")
+            break
+        fetched = False
+        for attempt in range(2):
+            try:
+                r2 = requests.get(
+                    f"{REGULATIONS_API}/comments/{comment_id}",
+                    params={"api_key": API_KEY},
+                    timeout=15,
+                )
+                r2.raise_for_status()
+                attrs = r2.json().get("data", {}).get("attributes", {})
+                text = attrs.get("comment", "")
+                if text and len(text) > 20:
+                    comments.append({"id": comment_id, "text": text, "docket": docket_id})
+                consecutive_failures = 0
+                fetched = True
+                time.sleep(0.3)
+                break
+            except Exception as e:
+                if attempt == 0:
+                    time.sleep(1)  # brief pause before retry
+                else:
+                    print(f"  Detail fetch error for {comment_id}: {e}")
+        if not fetched:
+            consecutive_failures += 1
 
     return comments
 
