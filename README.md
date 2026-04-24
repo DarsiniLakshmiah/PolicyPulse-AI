@@ -37,6 +37,20 @@ PolicyPulse AI is an end-to-end comment analysis platform that processes a feder
 9. **Visualizes a coordination network** (D3.js force-directed graph) showing which law firms, advocacy orgs, and industry groups are connected through shared citations and form letter campaigns.
 10. **Enriches org nodes** with live firmographic data (headcount, funding, HQ, job openings) via Crustdata — so agencies know whether a commenter is a 5-person advocacy shop or a Fortune 500 backed by $2B in VC.
 
+### Data Sources
+
+Every capability above is powered by real, publicly available federal data — not synthetic datasets or mock APIs.
+
+| Data Source | What We Use It For | Access |
+|---|---|---|
+| **[Regulations.gov API v4](https://open.gsa.gov/api/regulationsgov/)** | Live comment fetch by docket ID; training corpus for the ML classifier | Free API key |
+| **[Federal Register API](https://www.federalregister.gov/developers/documentation/api/v1)** | Final rule preamble text used to auto-label training data (comments cited in a preamble = significant) | Public, no key |
+| **[CourtListener API](https://www.courtlistener.com/api/)** | Real APA precedent cases cited in the OGC memo (e.g. *Motor Vehicle Mfrs. v. State Farm*, *West Virginia v. EPA*) | Free with token |
+| **[Crustdata /screener/company](https://crustdata.com)** | Firmographic enrichment for commenter orgs — headcount, funding, HQ, industry, job openings | Paid API |
+| **Real federal dockets (training)** | Labeled comment pairs from `EPA-HQ-OAR-2021-0257`, `FTC-2023-0007`, `CFPB-2023-0047` used to train the significance classifier | Via Regulations.gov |
+
+The ML model's ground truth is derived directly from agency behavior: if an agency cited a comment ID in its final rule preamble, that comment is labeled significant. No human labeling, no heuristics — the agency's own published response is the annotation.
+
 ---
 
 ## How It Differs from Existing Solutions
