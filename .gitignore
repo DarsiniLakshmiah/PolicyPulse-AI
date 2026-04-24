@@ -1,0 +1,33 @@
+# Credentials & secrets
+.env
+*.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+env/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ML model & training data (large files)
+model/
+data/raw/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
