@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PolicyPulse AI — Federal Comment Analysis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --navy: #0a1628;
+      --navy-mid: #162447;
+      --blue: #1a4a8a;
+      --blue-light: #2563eb;
+      --accent: #f59e0b;
+      --red: #dc2626;
+      --green: #16a34a;
+      --yellow: #d97706;
+      --gray-50: #f8fafc;
+      --gray-100: #f1f5f9;
+      --gray-200: #e2e8f0;
+      --gray-300: #cbd5e1;
+      --gray-500: #64748b;
+      --gray-700: #334155;
+      --gray-900: #0f172a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--gray-50); color: var(--gray-900); min-height: 100vh; }
+
+    /* ── Header ── */
+    .header {
+      background: var(--navy);
+      color: white;
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 58px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.3);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo { font-family: 'Fraunces', serif; font-size: 1.35rem; font-weight: 700; letter-spacing: -.02em; }
+    .logo em { color: var(--accent); font-style: normal; }
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--green); display: inline-block; margin-right: .4rem;
+    }
+    .status-dot.red { background: var(--red); }
+    #serverStatus { font-size: .75rem; color: rgba(255,255,255,.6); display: flex; align-items: center; gap: .75rem; }
+
+    /* ── Tabs ── */
+    .tabs { background: var(--navy-mid); display: flex; padding: 0 2rem; overflow-x: auto; }
+    .tab-btn {
+      color: rgba(255,255,255,.55); background: none; border: none;
+      padding: .8rem 1.2rem; cursor: pointer;
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: .85rem; font-weight: 500;
+      border-bottom: 2px solid transparent; transition: all .15s;
+      white-space: nowrap; display: flex; align-items: center; gap: .45rem;
+    }
+    .tab-btn:hover { color: white; }
+    .tab-btn.active { color: white; border-bottom-color: var(--accent); }
+    .tab-count {
+      background: rgba(255,255,255,.15); padding: .1rem .4rem;
+      border-radius: 10px; font-size: .7rem; font-family: 'IBM Plex Mono', monospace;
+    }
+    .tab-btn.active .tab-count { background: var(--accent); color: var(--navy); }
+
+    /* ── Layout ── */
+    .content { max-width: 1400px; margin: 0 auto; padding: 1.5rem 2rem; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Cards ── */
+    .card {
+      background: white; border-radius: 10px; border: 1px solid var(--gray-200);
+      padding: 1.25rem 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,.05);
+    }
+    .card-title { font-family: 'Fraunces', serif; font-size: 1.05rem; font-weight: 700; color: var(--navy); margin-bottom: .75rem; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .55rem 1.1rem; border-radius: 7px;
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: .875rem;
+      font-weight: 600; cursor: pointer; border: none; transition: all .15s;
+    }
+    .btn-primary { background: var(--blue-light); color: white; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-primary:disabled { background: var(--gray-300); cursor: not-allowed; }
+    .btn-secondary { background: var(--gray-100); color: var(--gray-700); border: 1px solid var(--gray-200); }
+    .btn-secondary:hover { background: var(--gray-200); }
+    .btn-accent { background: var(--accent); color: var(--navy); }
+    .btn-accent:hover { background: #d97706; }
+    .btn-accent:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-sm { padding: .35rem .75rem; font-size: .8rem; }
+
+    /* ── Inputs ── */
+    .input {
+      padding: .6rem .9rem; border: 1px solid var(--gray-300); border-radius: 7px;
+      font-size: .875rem; font-family: 'IBM Plex Mono', monospace;
+      color: var(--gray-900); background: white; transition: border .15s; width: 100%;
+    }
+    .input:focus { outline: none; border-color: var(--blue-light); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+
+    /* ── Grid ── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+    .flex { display: flex; }
+    .items-center { align-items: center; }
+    .justify-between { justify-content: space-between; }
+    .gap-1 { gap: .5rem; }
+    .mt-1 { margin-top: .5rem; }
+    .mt-2 { margin-top: 1rem; }
+    .mb-1 { margin-bottom: .5rem; }
+    .mb-2 { margin-bottom: 1rem; }
+
+    /* ── Stats ── */
+    .stats-row { display: flex; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .stat-card { flex: 1; min-width: 110px; background: white; border-radius: 8px; padding: .85rem 1rem; border: 1px solid var(--gray-200); text-align: center; }
+    .stat-value { font-family: 'Fraunces', serif; font-size: 1.75rem; font-weight: 700; color: var(--navy); }
+    .stat-label { font-size: .72rem; color: var(--gray-500); margin-top: .15rem; }
+
+    /* ── Badges ── */
+    .score-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 38px; height: 22px; border-radius: 4px; font-family: 'IBM Plex Mono', monospace; font-size: .75rem; font-weight: 700; padding: 0 .35rem; }
+    .score-high { background: #fee2e2; color: var(--red); }
+    .score-mid  { background: #fef9c3; color: #854d0e; }
+    .score-low  { background: #dcfce7; color: var(--green); }
+
+    .stance-badge { display: inline-block; padding: .15rem .45rem; border-radius: 4px; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+    .stance-oppose  { background: #fee2e2; color: var(--red); }
+    .stance-support { background: #dcfce7; color: var(--green); }
+    .stance-neutral { background: var(--gray-100); color: var(--gray-500); }
+
+    .flag { display: inline-flex; align-items: center; gap: .2rem; font-size: .72rem; padding: .15rem .4rem; border-radius: 4px; }
+    .flag-lit  { background: #fee2e2; color: var(--red); }
+    .flag-form { background: #f3e8ff; color: #7c3aed; }
+    .flag-none { color: var(--gray-300); font-size: .8rem; }
+
+    .risk-badge { padding: .2rem .5rem; border-radius: 4px; font-size: .7rem; font-weight: 700; text-transform: uppercase; }
+    .risk-high   { background: #fee2e2; color: var(--red); }
+    .risk-medium { background: #fef9c3; color: #854d0e; }
+    .risk-low    { background: #dcfce7; color: var(--green); }
+
+    /* ── Table ── */
+    .table-wrapper { overflow-x: auto; border-radius: 8px; border: 1px solid var(--gray-200); }
+    table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    th { background: var(--gray-100); color: var(--gray-700); font-weight: 600; text-align: left; padding: .6rem .85rem; border-bottom: 1px solid var(--gray-200); white-space: nowrap; cursor: pointer; user-select: none; }
+    th:hover { background: var(--gray-200); }
+    td { padding: .6rem .85rem; border-bottom: 1px solid var(--gray-100); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--gray-50); }
+    .comment-text { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--gray-700); }
+    .cfr-code { font-family: 'IBM Plex Mono', monospace; font-size: .75rem; color: var(--blue); }
+
+    /* ── Toolbar ── */
+    .toolbar { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .filter-select { padding: .45rem .75rem; border: 1px solid var(--gray-300); border-radius: 6px; font-size: .8rem; font-family: 'Plus Jakarta Sans', sans-serif; background: white; cursor: pointer; }
+
+    /* ── Preset buttons ── */
+    .preset-btns { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .75rem; }
+    .preset-btn { padding: .28rem .65rem; background: var(--gray-100); border: 1px solid var(--gray-200); border-radius: 5px; font-size: .75rem; font-family: 'IBM Plex Mono', monospace; cursor: pointer; color: var(--gray-700); transition: all .15s; }
+    .preset-btn:hover { background: var(--navy); color: white; border-color: var(--navy); }
+
+    /* ── Docket banner ── */
+    .docket-banner { background: linear-gradient(135deg, var(--navy), var(--navy-mid)); color: white; border-radius: 10px; padding: 1.1rem 1.5rem; margin-bottom: 1.25rem; }
+    .docket-banner h2 { font-family: 'Fraunces', serif; font-size: 1.1rem; margin-bottom: .4rem; }
+    .docket-meta { display: flex; gap: 1.25rem; font-size: .78rem; opacity: .75; font-family: 'IBM Plex Mono', monospace; flex-wrap: wrap; }
+    .docket-summary { font-size: .83rem; opacity: .85; margin-top: .5rem; line-height: 1.5; }
+
+    /* ── Progress ── */
+    .progress-bar { height: 4px; background: var(--gray-200); border-radius: 2px; overflow: hidden; margin-top: .5rem; }
+    .progress-fill { height: 100%; background: var(--blue-light); border-radius: 2px; transition: width .3s; }
+
+    /* ── Alerts ── */
+    .alert { padding: .7rem 1rem; border-radius: 7px; font-size: .84rem; margin-bottom: 1rem; display: flex; align-items: flex-start; gap: .5rem; }
+    .alert-info    { background: #eff6ff; color: #1e3a5f; border: 1px solid #bfdbfe; }
+    .alert-success { background: #dcfce7; color: #14532d; border: 1px solid #86efac; }
+    .alert-warning { background: #fef9c3; color: #713f12; border: 1px solid #fde68a; }
+    .alert-error   { background: #fee2e2; color: #7f1d1d; border: 1px solid #fca5a5; }
+
+    /* ── Spinner ── */
+    .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.3); border-top-color: white; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; flex-shrink: 0; }
+    .spinner-dark { border-color: rgba(0,0,0,.15); border-top-color: var(--blue-light); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Empty state ── */
+    .empty-state { text-align: center; padding: 3rem; color: var(--gray-500); }
+    .empty-state .icon { font-size: 2.5rem; margin-bottom: .75rem; }
+    .empty-state p { font-size: .875rem; }
+
+    /* ── Cluster (responses tab) ── */
+    .cluster-card { background: white; border: 1px solid var(--gray-200); border-radius: 10px; margin-bottom: 1rem; overflow: hidden; }
+    .cluster-header { background: var(--gray-50); padding: .85rem 1.25rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--gray-200); cursor: pointer; }
+    .cluster-title { font-weight: 600; color: var(--navy); display: flex; align-items: center; gap: .75rem; }
+    .cluster-count { background: var(--blue-light); color: white; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: .72rem; flex-shrink: 0; }
+    .cluster-body { padding: 1.25rem; }
+    .response-textarea { width: 100%; min-height: 180px; padding: .85rem 1rem; border: 1px solid var(--gray-200); border-radius: 8px; font-family: 'IBM Plex Mono', monospace; font-size: .78rem; line-height: 1.65; color: var(--gray-700); resize: vertical; background: #fafafa; }
+
+    /* ── OGC memo ── */
+    .memo-area { width: 100%; min-height: 360px; padding: 1.1rem 1.25rem; border: 1px solid var(--gray-200); border-radius: 8px; font-family: 'IBM Plex Mono', monospace; font-size: .8rem; line-height: 1.7; color: var(--gray-700); resize: vertical; }
+
+    /* ── Chart ── */
+    .chart-container { position: relative; height: 220px; }
+
+    /* ── Section label ── */
+    .section-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--gray-500); margin-bottom: .4rem; }
+
+    /* ── Risk row ── */
+    .risk-row { display: flex; align-items: flex-start; gap: .75rem; padding: .75rem 0; border-bottom: 1px solid var(--gray-100); }
+    .risk-row:last-child { border-bottom: none; }
+
+    /* ── Drop zone ── */
+    .drop-zone { border: 2px dashed var(--gray-300); border-radius: 8px; padding: 1.5rem; text-align: center; cursor: pointer; transition: border-color .15s; }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--blue-light); background: #eff6ff; }
+
+    /* ── Confidence indicator ── */
+    .conf-high { color: var(--green); font-size: .68rem; }
+    .conf-medium { color: var(--yellow); font-size: .68rem; }
+
+    /* ── APA Compliance Panel ── */
+    .apa-response-layout { display: grid; grid-template-columns: 1fr 268px; gap: 1rem; align-items: start; }
+    .apa-panel { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 8px; padding: .85rem 1rem; }
+    .apa-panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .4rem; }
+    .apa-panel-title { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--gray-500); }
+    .apa-score-badge { font-family: 'IBM Plex Mono', monospace; font-size: .88rem; font-weight: 700; padding: .15rem .45rem; border-radius: 4px; }
+    .apa-compliant  { background: #dcfce7; color: var(--green); }
+    .apa-partial    { background: #fef9c3; color: #854d0e; }
+    .apa-deficient  { background: #fee2e2; color: var(--red); }
+    .apa-na         { background: var(--gray-100); color: var(--gray-400); }
+    .apa-progress { height: 4px; background: var(--gray-200); border-radius: 2px; margin: .4rem 0 .65rem; overflow: hidden; }
+    .apa-progress-fill { height: 100%; border-radius: 2px; transition: width .4s ease, background .4s ease; }
+    .apa-criterion { display: flex; gap: .45rem; padding: .28rem 0; border-bottom: 1px solid var(--gray-100); font-size: .76rem; align-items: flex-start; }
+    .apa-criterion:last-child { border-bottom: none; }
+    .apa-dot { font-size: .7rem; flex-shrink: 0; padding-top: .12rem; }
+    .dot-pass { color: var(--green); }
+    .dot-warn { color: var(--yellow); }
+    .dot-fail { color: var(--red); }
+    .dot-inc  { color: var(--gray-300); }
+    .apa-criterion-label { font-weight: 600; color: var(--gray-700); line-height: 1.3; }
+    .apa-criterion-note { font-size: .69rem; color: var(--gray-500); margin-top: .06rem; font-style: italic; line-height: 1.35; }
+    .apa-source-tag { font-size: .64rem; color: var(--gray-400); font-family: 'IBM Plex Mono', monospace; }
+
+    @media (max-width: 768px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .apa-response-layout { grid-template-columns: 1fr; }
+      .stats-row { flex-direction: column; }
+      .content { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="logo">Policy<em>Pulse</em> <span style="font-size:.8rem;opacity:.5;font-family:'IBM Plex Mono',monospace;font-style:italic">AI</span></div>
+  <div id="serverStatus">
+    <span><span class="status-dot red" id="dot"></span><span id="statusText">checking server...</span></span>
+    <span style="font-size:.7rem;opacity:.5;font-family:'IBM Plex Mono',monospace">localhost:5000</span>
+  </div>
+</header>
+
+<!-- Tabs -->
+<nav class="tabs">
+  <button class="tab-btn active" onclick="switchTab('import', this)">📥 Import</button>
+  <button class="tab-btn" onclick="switchTab('comments', this)">
+    📋 Comments <span class="tab-count" id="cnt-comments">0</span>
+  </button>
+  <button class="tab-btn" onclick="switchTab('responses', this)">
+    ✍️ Responses <span class="tab-count" id="cnt-responses">0</span>
+  </button>
+  <button class="tab-btn" onclick="switchTab('mapping', this)">🗺️ CFR Mapping</button>
+  <button class="tab-btn" onclick="switchTab('ogc', this)">⚖️ OGC Risk</button>
+</nav>
+
+<main class="content">
+
+  <!-- ═══════════════════════════════════════════════
+       TAB 1 — IMPORT
+  ═══════════════════════════════════════════════ -->
+  <div class="tab-panel active" id="panel-import">
+    <div class="grid-2 mb-2">
+
+      <!-- Docket input -->
+      <div class="card">
+        <div class="card-title">Pull from Regulations.gov</div>
+        <div class="section-label">Docket ID</div>
+        <div class="flex gap-1">
+          <input class="input" id="docketInput" placeholder="e.g. FTC-2023-0007" value="FTC-2023-0007">
+          <button class="btn btn-primary" onclick="importDocket()" id="importBtn">Fetch</button>
+        </div>
+        <div class="preset-btns">
+          <span style="font-size:.7rem;color:var(--gray-500);align-self:center">Quick load:</span>
+          <button class="preset-btn" onclick="setDocket('FTC-2023-0007')">FTC · Non-compete ban</button>
+          <button class="preset-btn" onclick="setDocket('EPA-HQ-OAR-2023-0072')">EPA · Emissions</button>
+          <button class="preset-btn" onclick="setDocket('CFPB-2023-0047')">CFPB · Medical debt</button>
+        </div>
+        <div id="importStatus" class="mt-2"></div>
+      </div>
+
+      <!-- File upload -->
+      <div class="card">
+        <div class="card-title">Upload Comments (TXT / CSV)</div>
+        <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+          <div style="font-size:1.5rem;margin-bottom:.3rem">📄</div>
+          <div style="font-size:.85rem;color:var(--gray-500)">Drop files or click to upload</div>
+          <div style="font-size:.73rem;color:var(--gray-400);margin-top:.2rem">One comment per line or paragraph</div>
+          <input type="file" id="fileInput" style="display:none" accept=".txt,.csv" multiple onchange="handleUpload(event)">
+        </div>
+        <div id="uploadStatus" class="mt-1"></div>
+      </div>
+    </div>
+
+    <!-- Docket info banner -->
+    <div id="docketBanner" class="docket-banner mb-2" style="display:none">
+      <div style="font-size:.68rem;opacity:.55;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.2rem">Active Docket</div>
+      <h2 id="docketTitle">—</h2>
+      <div class="docket-meta">
+        <span id="docketAgency">—</span>
+        <span>·</span>
+        <span id="docketCount">— comments loaded</span>
+      </div>
+      <div class="docket-summary" id="docketSummary"></div>
+    </div>
+
+    <!-- Run analysis -->
+    <div id="analyzeSection" style="display:none">
+      <div class="flex items-center justify-between mb-1">
+        <div class="card-title" style="margin:0">Loaded Comments <span style="font-weight:400;font-size:.85rem;color:var(--gray-500)" id="loadedCount"></span></div>
+        <button class="btn btn-accent" onclick="runAnalysis()" id="analyzeBtn">
+          🤖 Run ML Analysis + Generate Responses
+        </button>
+      </div>
+      <div id="progressSection" style="display:none;margin-bottom:1rem">
+        <div class="alert alert-info" id="progressAlert">Processing...</div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      </div>
+      <div id="previewTable"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       TAB 2 — COMMENTS
+  ═══════════════════════════════════════════════ -->
+  <div class="tab-panel" id="panel-comments">
+    <div id="commentsEmpty" class="empty-state">
+      <div class="icon">📋</div>
+      <p>Import a docket and run analysis to see ML-scored results here.</p>
+    </div>
+    <div id="commentsContent" style="display:none">
+      <div class="stats-row" id="statsRow"></div>
+      <div class="toolbar">
+        <select class="filter-select" onchange="filterComments(this.value)">
+          <option value="all">All Comments</option>
+          <option value="significant">ML-Significant</option>
+          <option value="high-lit">High Litigation Risk</option>
+          <option value="form">Form Letters</option>
+          <option value="oppose">Opposing</option>
+          <option value="support">Supporting</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="sortBy('id')">#</th>
+              <th onclick="sortBy('text')">Comment</th>
+              <th onclick="sortBy('significance_score')">ML Score ↕</th>
+              <th onclick="sortBy('sig_confidence')">Confidence</th>
+              <th onclick="sortBy('litigation_risk')">Litigation</th>
+              <th>CFR §</th>
+              <th onclick="sortBy('form_letter')">Form Letter</th>
+            </tr>
+          </thead>
+          <tbody id="commentsBody"></tbody>
+        </table>
+      </div>
+      <div style="font-size:.72rem;color:var(--gray-400);margin-top:.5rem;font-family:'IBM Plex Mono',monospace">
+        ML scoring: TF-IDF + Logistic Regression trained on Regulations.gov data. Litigation: rule-based APA pattern matching.
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       TAB 3 — RESPONSES
+  ═══════════════════════════════════════════════ -->
+  <div class="tab-panel" id="panel-responses">
+    <div id="responsesEmpty" class="empty-state">
+      <div class="icon">✍️</div>
+      <p>Run analysis first. Claude drafts Federal Register preamble responses for each comment cluster.</p>
+    </div>
+    <div id="responsesContent" style="display:none">
+      <div class="alert alert-info mb-2">
+        ℹ️ Responses are Claude-drafted in Federal Register preamble format. Edit before use.
+        Clusters are built by TF-IDF KMeans — Claude names each cluster.
+      </div>
+      <div id="clusterList"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       TAB 4 — CFR MAPPING
+  ═══════════════════════════════════════════════ -->
+  <div class="tab-panel" id="panel-mapping">
+    <div id="mappingEmpty" class="empty-state">
+      <div class="icon">🗺️</div>
+      <p>Run analysis to see how comments map to CFR sections.</p>
+    </div>
+    <div id="mappingContent" style="display:none">
+      <div class="grid-2 mb-2">
+        <div class="card">
+          <div class="card-title">Comment Distribution by CFR Section</div>
+          <div class="chart-container"><canvas id="cfrChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">CFR Section Summary</div>
+          <div id="cfrSummary"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Full Comment → CFR Mapping</div>
+        <div class="table-wrapper mt-1">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th><th>Comment Excerpt</th><th>CFR Sections</th><th>ML Score</th><th>Litigation</th>
+              </tr>
+            </thead>
+            <tbody id="mappingBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       TAB 5 — OGC RISK
+  ═══════════════════════════════════════════════ -->
+  <div class="tab-panel" id="panel-ogc">
+    <div id="ogcEmpty" class="empty-state">
+      <div class="icon">⚖️</div>
+      <p>Run analysis to generate the OGC litigation risk assessment and memo.</p>
+    </div>
+    <div id="ogcContent" style="display:none">
+      <div class="grid-3 mb-2">
+        <div class="stat-card">
+          <div class="stat-value" id="ogcTotal">—</div>
+          <div class="stat-label">Total Comments</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="ogcHighRisk" style="color:var(--red)">—</div>
+          <div class="stat-label">High Litigation Risk</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="ogcFormLetters" style="color:var(--gray-500)">—</div>
+          <div class="stat-label">Form Letter Campaigns</div>
+        </div>
+      </div>
+      <div class="grid-2 mb-2">
+        <div class="card">
+          <div class="card-title">Significance Distribution</div>
+          <div class="chart-container"><canvas id="sigChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">⚠️ High-Risk Comments — Must Respond</div>
+          <div id="riskList" style="overflow-y:auto;max-height:220px"></div>
+        </div>
+      </div>
+      <div class="card mb-2" id="casesCard" style="display:none">
+        <div class="card-title">📚 Related APA Precedents <span style="font-size:.75rem;font-weight:400;color:var(--gray-500)" id="casesSource"></span></div>
+        <div id="casesList"></div>
+      </div>
+
+      <div class="card">
+        <div class="flex items-center justify-between mb-2">
+          <div class="card-title" style="margin:0">OGC Memorandum (Llama 3.3 / Claude-drafted)</div>
+          <div class="flex gap-1">
+            <button class="btn btn-secondary btn-sm" onclick="copyMemo()">📋 Copy</button>
+          </div>
+        </div>
+        <textarea class="memo-area" id="memoArea" placeholder="OGC memo will appear here after analysis..."></textarea>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+const API = "http://localhost:5000";
+let state = {
+  comments: [],
+  scored: [],
+  clusters: [],
+  ogcMemo: "",
+  sortKey: "significance_score",
+  sortDir: -1,
+  filter: "all",
+  courtCases: [],
+};
+let cfrChart = null, sigChart = null;
+
+// ─────────────────────────────────────────────
+// SERVER HEALTH CHECK
+// ─────────────────────────────────────────────
+async function checkServer() {
+  try {
+    const r = await fetch(`${API}/api/health`, { signal: AbortSignal.timeout(3000) });
+    const d = await r.json();
+    document.getElementById("dot").classList.remove("red");
+    const llmLabel = d.llm && d.llm !== "none" ? ` · ${d.llm.split("/")[0]}` : "";
+    document.getElementById("statusText").textContent =
+      d.model_loaded ? `server ready · model loaded${llmLabel}` : "server up · run train.py";
+  } catch {
+    document.getElementById("statusText").textContent = "server offline — run python app.py";
+  }
+}
+checkServer();
+setInterval(checkServer, 10000);
+
+// ─────────────────────────────────────────────
+// TAB SWITCHING
+// ─────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById("panel-" + name).classList.add("active");
+  btn.classList.add("active");
+}
+
+// ─────────────────────────────────────────────
+// IMPORT
+// ─────────────────────────────────────────────
+function setDocket(id) {
+  document.getElementById("docketInput").value = id;
+  importDocket();
+}
+
+async function importDocket() {
+  const docketId = document.getElementById("docketInput").value.trim();
+  if (!docketId) return;
+
+  const btn = document.getElementById("importBtn");
+  btn.innerHTML = '<span class="spinner"></span>';
+  btn.disabled = true;
+  document.getElementById("importStatus").innerHTML = "";
+
+  try {
+    const r = await fetch(`${API}/api/import`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ docketId }),
+    });
+    const data = await r.json();
+
+    if (data.error) throw new Error(data.error);
+
+    state.comments = [];
+    state.scored = [];
+
+    const p = data.policy;
+    document.getElementById("docketBanner").style.display = "block";
+    document.getElementById("docketTitle").textContent = p.title;
+    document.getElementById("docketAgency").textContent = p.agency;
+    document.getElementById("docketCount").textContent = `${data.comment_count} comments loaded`;
+    document.getElementById("docketSummary").textContent = p.summary || "";
+    document.getElementById("loadedCount").textContent = `(${data.comment_count} loaded)`;
+    document.getElementById("analyzeSection").style.display = "block";
+    document.getElementById("importStatus").innerHTML =
+      `<div class="alert alert-success">✓ Loaded ${data.comment_count} comments for ${p.agency} — ${p.title}</div>`;
+
+    state.courtCases = data.court_cases || [];
+    document.getElementById("cnt-comments").textContent = data.comment_count;
+    renderPreview(data.comment_count);
+  } catch (e) {
+    document.getElementById("importStatus").innerHTML =
+      `<div class="alert alert-error">Error: ${e.message}. Is python app.py running?</div>`;
+  }
+
+  btn.innerHTML = "Fetch";
+  btn.disabled = false;
+}
+
+function renderPreview(count) {
+  document.getElementById("previewTable").innerHTML = `
+    <div class="alert alert-info">
+      ${count} comments loaded. Click <strong>Run ML Analysis</strong> to score significance, detect litigation risk, cluster themes, and draft preamble responses.
+    </div>`;
+}
+
+// ─────────────────────────────────────────────
+// FILE UPLOAD
+// ─────────────────────────────────────────────
+function handleUpload(e) {
+  const files = Array.from(e.target.files);
+  const status = document.getElementById("uploadStatus");
+  status.innerHTML = `<div class="alert alert-info">Reading ${files.length} file(s)...</div>`;
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      status.innerHTML = `<div class="alert alert-success">✓ ${file.name} ready — use Import tab to analyze</div>`;
+    };
+    reader.readAsText(file);
+  });
+}
+
+const dz = document.getElementById("dropZone");
+dz.addEventListener("dragover", e => { e.preventDefault(); dz.classList.add("dragover"); });
+dz.addEventListener("dragleave", () => dz.classList.remove("dragover"));
+dz.addEventListener("drop", e => { e.preventDefault(); dz.classList.remove("dragover"); });
+
+// ─────────────────────────────────────────────
+// RUN ANALYSIS
+// ─────────────────────────────────────────────
+async function runAnalysis() {
+  const btn = document.getElementById("analyzeBtn");
+  btn.innerHTML = '<span class="spinner"></span> Analyzing...';
+  btn.disabled = true;
+
+  const ps = document.getElementById("progressSection");
+  ps.style.display = "block";
+  setProgress(10, "Running ML significance scorer...");
+
+  try {
+    setProgress(30, "Detecting litigation patterns...");
+    const r = await fetch(`${API}/api/process`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+
+    setProgress(60, "Clustering themes with KMeans...");
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+
+    setProgress(85, "Claude drafting preamble responses...");
+    state.scored = data.comments || [];
+    state.clusters = data.clusters || [];
+    state.ogcMemo = data.ogc_memo || "";
+
+    await sleep(400);
+    setProgress(100, "✓ Analysis complete");
+
+    document.getElementById("progressAlert").className = "alert alert-success";
+    document.getElementById("cnt-comments").textContent = state.scored.length;
+    document.getElementById("cnt-responses").textContent = state.clusters.length;
+
+    renderCommentsTab(data.stats);
+    renderResponsesTab();
+    renderMappingTab();
+    renderOGCTab(data.stats);
+  } catch (e) {
+    document.getElementById("progressAlert").innerHTML =
+      `<span style="color:var(--red)">Error: ${e.message}</span>`;
+    document.getElementById("progressAlert").className = "alert alert-error";
+  }
+
+  btn.innerHTML = "🤖 Re-Run Analysis";
+  btn.disabled = false;
+}
+
+function setProgress(pct, msg) {
+  document.getElementById("progressFill").style.width = pct + "%";
+  document.getElementById("progressAlert").textContent = msg;
+}
+
+// ─────────────────────────────────────────────
+// COMMENTS TAB
+// ─────────────────────────────────────────────
+function renderCommentsTab(stats) {
+  document.getElementById("commentsEmpty").style.display = "none";
+  document.getElementById("commentsContent").style.display = "block";
+
+  document.getElementById("statsRow").innerHTML = `
+    <div class="stat-card"><div class="stat-value">${stats.total}</div><div class="stat-label">Total</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:var(--red)">${stats.significant}</div><div class="stat-label">ML-Significant</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:#d97706">${stats.litigation_high}</div><div class="stat-label">High Lit. Risk</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:#7c3aed">${stats.form_letters}</div><div class="stat-label">Form Letters</div></div>
+    <div class="stat-card"><div class="stat-value" style="color:var(--green)">${stats.clusters}</div><div class="stat-label">Clusters</div></div>
+  `;
+  renderRows(state.scored);
+}
+
+function renderRows(data) {
+  document.getElementById("commentsBody").innerHTML = data.map(c => {
+    const score = c.significance_score;
+    const scoreClass = score >= 70 ? "score-high" : score >= 40 ? "score-mid" : "score-low";
+    const lit = c.litigation_risk || "low";
+    const litClass = lit === "high" ? "flag-lit" : "";
+    const cfr = Array.isArray(c.cfr_sections) ? c.cfr_sections.join(", ") : "General";
+    const isForm = c.form_letter?.is_form_letter;
+    const sigText = c.significant ? "significant" : "not sig.";
+    const confClass = c.sig_confidence === "high" ? "conf-high" : "conf-medium";
+    return `<tr>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:.7rem;color:var(--gray-400);white-space:nowrap">${h(c.id)}</td>
+      <td>
+        <div class="comment-text" title="${h(c.text)}">${h(c.text)}</div>
+        <div style="font-size:.7rem;color:var(--gray-400);margin-top:.1rem">${h(c.name || "—")}</div>
+      </td>
+      <td>
+        <span class="score-badge ${scoreClass}">${score}</span>
+        <div class="${confClass}" style="margin-top:.15rem">${sigText} · ${c.sig_confidence || ""}</div>
+      </td>
+      <td><span class="risk-badge risk-${lit}">${lit}</span></td>
+      <td>
+        ${lit === "high"
+          ? `<div style="max-width:140px">${(c.litigation_flags||[]).slice(0,2).map(f=>`<span class="flag flag-lit" style="margin:.1rem .1rem .1rem 0;font-size:.65rem">${h(f)}</span>`).join("")}</div>`
+          : `<span class="flag-none">—</span>`}
+      </td>
+      <td><span class="cfr-code">${h(cfr)}</span></td>
+      <td>${isForm ? `<span class="flag flag-form">📋 ×${c.form_letter.campaign_size}</span>` : '<span class="flag-none">—</span>'}</td>
+    </tr>`;
+  }).join("") || '<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:2rem">No results</td></tr>';
+}
+
+function filterComments(val) {
+  state.filter = val;
+  let data = [...state.scored];
+  if (val === "significant")  data = data.filter(c => c.significant);
+  if (val === "high-lit")     data = data.filter(c => c.litigation_risk === "high");
+  if (val === "form")         data = data.filter(c => c.form_letter?.is_form_letter);
+  if (val === "oppose")       data = data.filter(c => (c.text || "").toLowerCase().match(/oppose|against|reject|violates|ban|arbitrary/));
+  if (val === "support")      data = data.filter(c => (c.text || "").toLowerCase().match(/support|agree|applaud|endorse|favor/));
+  renderRows(data);
+}
+
+function sortBy(key) {
+  if (state.sortKey === key) state.sortDir *= -1;
+  else { state.sortKey = key; state.sortDir = -1; }
+  const data = [...state.scored].sort((a, b) => {
+    let av = key === "form_letter" ? (a.form_letter?.is_form_letter ? 1 : 0) : a[key];
+    let bv = key === "form_letter" ? (b.form_letter?.is_form_letter ? 1 : 0) : b[key];
+    if (typeof av === "number") return (av - bv) * state.sortDir;
+    return String(av || "").localeCompare(String(bv || "")) * state.sortDir;
+  });
+  renderRows(data);
+}
+
+// ─────────────────────────────────────────────
+// RESPONSES TAB
+// ─────────────────────────────────────────────
+function renderResponsesTab() {
+  if (!state.clusters.length) return;
+  document.getElementById("responsesEmpty").style.display = "none";
+  document.getElementById("responsesContent").style.display = "block";
+
+  document.getElementById("clusterList").innerHTML = state.clusters.map((cl, i) => `
+    <div class="cluster-card">
+      <div class="cluster-header" onclick="toggleCluster(${i})">
+        <div class="cluster-title">
+          <span class="cluster-count">${cl.count}</span>
+          ${h(cl.name)}
+          <span style="font-size:.75rem;color:var(--gray-500);font-weight:400">· ${cl.count} comment${cl.count !== 1 ? "s" : ""}</span>
+        </div>
+        <div class="flex items-center gap-1">
+          <span id="arr-${i}" style="color:var(--gray-400)">▼</span>
+        </div>
+      </div>
+      <div class="cluster-body" id="cb-${i}">
+        <div class="section-label mb-1">Claude-Drafted Federal Register Response</div>
+        <div class="apa-response-layout">
+          <textarea class="response-textarea" id="resp-${i}">${h(cl.draft_response || "")}</textarea>
+          <div class="apa-panel">
+            <div class="apa-panel-header">
+              <span class="apa-panel-title">APA Compliance</span>
+              <span class="apa-score-badge apa-na" id="apa-score-${i}">—</span>
+            </div>
+            <div class="apa-progress"><div class="apa-progress-fill" id="apa-fill-${i}" style="width:0%"></div></div>
+            <div id="apa-criteria-${i}"></div>
+            <div class="flex items-center justify-between" style="padding-top:.55rem;margin-top:.4rem;border-top:1px solid var(--gray-100)">
+              <span class="apa-source-tag" id="apa-source-${i}">rule-based</span>
+              <button class="btn btn-secondary btn-sm" id="apa-ai-btn-${i}" onclick="deepCheck(${i})">🤖 AI Check</button>
+            </div>
+          </div>
+        </div>
+        <div class="flex gap-1 mt-1">
+          <button class="btn btn-secondary btn-sm" onclick="copyText('resp-${i}')">📋 Copy</button>
+          <span style="font-size:.72rem;color:var(--gray-400);align-self:center;font-family:'IBM Plex Mono',monospace">
+            comments: ${(cl.comment_ids || []).join(", ")}
+          </span>
+        </div>
+      </div>
+    </div>
+  `).join("");
+
+  attachApaListeners();
+}
+
+function toggleCluster(i) {
+  const b = document.getElementById(`cb-${i}`);
+  const a = document.getElementById(`arr-${i}`);
+  b.style.display = b.style.display === "none" ? "block" : "none";
+  a.textContent = b.style.display === "none" ? "▶" : "▼";
+}
+
+// ─────────────────────────────────────────────
+// CFR MAPPING TAB
+// ─────────────────────────────────────────────
+function renderMappingTab() {
+  if (!state.scored.length) return;
+  document.getElementById("mappingEmpty").style.display = "none";
+  document.getElementById("mappingContent").style.display = "block";
+
+  // Group by CFR section
+  const groups = {};
+  state.scored.forEach(c => {
+    const sections = Array.isArray(c.cfr_sections) ? c.cfr_sections : ["General"];
+    sections.forEach(s => {
+      groups[s] = groups[s] || [];
+      groups[s].push(c);
+    });
+  });
+  const sorted = Object.entries(groups).sort((a, b) => b[1].length - a[1].length);
+
+  // Chart
+  if (cfrChart) cfrChart.destroy();
+  cfrChart = new Chart(document.getElementById("cfrChart").getContext("2d"), {
+    type: "bar",
+    data: {
+      labels: sorted.map(([k]) => k),
+      datasets: [{
+        label: "Comments",
+        data: sorted.map(([, v]) => v.length),
+        backgroundColor: sorted.map(([, v]) =>
+          v.some(c => c.litigation_risk === "high") ? "#dc2626"
+          : v.some(c => c.significant) ? "#d97706" : "#16a34a"
+        ),
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { stepSize: 1 } },
+        x: { ticks: { font: { family: "IBM Plex Mono", size: 10 } } },
+      },
+    },
+  });
+
+  // Summary
+  document.getElementById("cfrSummary").innerHTML = sorted.map(([section, comments]) => {
+    const avg = Math.round(comments.reduce((s, c) => s + (c.significance_score || 0), 0) / comments.length);
+    const hasLit = comments.some(c => c.litigation_risk === "high");
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:.45rem 0;border-bottom:1px solid var(--gray-100)">
+      <div><span class="cfr-code">${h(section)}</span>${hasLit ? ' <span class="flag flag-lit" style="font-size:.65rem">⚠️</span>' : ""}</div>
+      <div style="display:flex;align-items:center;gap:.65rem">
+        <span style="font-size:.75rem;color:var(--gray-500)">${comments.length} comment${comments.length !== 1 ? "s" : ""}</span>
+        <span class="score-badge ${avg >= 70 ? "score-high" : avg >= 40 ? "score-mid" : "score-low"}">${avg}</span>
+      </div>
+    </div>`;
+  }).join("");
+
+  // Table
+  document.getElementById("mappingBody").innerHTML = state.scored.map(c => {
+    const cfr = Array.isArray(c.cfr_sections) ? c.cfr_sections.join(", ") : "General";
+    const score = c.significance_score;
+    return `<tr>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:.7rem;color:var(--gray-400)">${h(c.id)}</td>
+      <td><div class="comment-text">${h(c.text)}</div></td>
+      <td><span class="cfr-code">${h(cfr)}</span></td>
+      <td><span class="score-badge ${score >= 70 ? "score-high" : score >= 40 ? "score-mid" : "score-low"}">${score}</span></td>
+      <td><span class="risk-badge risk-${c.litigation_risk || "low"}">${c.litigation_risk || "low"}</span></td>
+    </tr>`;
+  }).join("");
+}
+
+// ─────────────────────────────────────────────
+// OGC TAB
+// ─────────────────────────────────────────────
+function renderOGCTab(stats) {
+  document.getElementById("ogcEmpty").style.display = "none";
+  document.getElementById("ogcContent").style.display = "block";
+
+  document.getElementById("ogcTotal").textContent = stats.total;
+  document.getElementById("ogcHighRisk").textContent = stats.litigation_high;
+  document.getElementById("ogcFormLetters").textContent = stats.form_letters;
+  document.getElementById("memoArea").value = state.ogcMemo;
+
+  // Court cases panel
+  if (state.courtCases.length) {
+    document.getElementById("casesCard").style.display = "block";
+    const isLive = state.courtCases[0].case_name.indexOf("v. EPA, 597") === -1 ||
+                   state.courtCases.length > 5;
+    document.getElementById("casesSource").textContent =
+      isLive ? "— live CourtListener results" : "— landmark APA precedents";
+    document.getElementById("casesList").innerHTML = state.courtCases.map(c => `
+      <div style="padding:.6rem 0;border-bottom:1px solid var(--gray-100);display:flex;gap:.75rem;align-items:flex-start">
+        <span style="font-size:.8rem;color:var(--blue);flex-shrink:0">⚖️</span>
+        <div>
+          <a href="${h(c.url)}" target="_blank" style="font-size:.82rem;font-weight:600;color:var(--blue-light);text-decoration:none">${h(c.case_name)}</a>
+          <div style="font-size:.75rem;color:var(--gray-500);margin-top:.1rem">${h(c.court)}${c.date ? " · " + c.date.slice(0,4) : ""}</div>
+          <div style="font-size:.78rem;color:var(--gray-700);margin-top:.2rem;line-height:1.45">${h(c.snippet)}</div>
+        </div>
+      </div>`).join("");
+  }
+
+  // Chart
+  const high = state.scored.filter(c => c.significant && c.significance_score >= 70).length;
+  const mid  = state.scored.filter(c => c.significant && c.significance_score < 70).length;
+  const low  = state.scored.filter(c => !c.significant).length;
+  if (sigChart) sigChart.destroy();
+  sigChart = new Chart(document.getElementById("sigChart").getContext("2d"), {
+    type: "doughnut",
+    data: {
+      labels: ["High (≥70)", "Medium (40–69)", "Low (<40)"],
+      datasets: [{
+        data: [high, mid, low],
+        backgroundColor: ["#dc2626", "#d97706", "#16a34a"],
+        borderWidth: 0,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: "bottom", labels: { font: { family: "Plus Jakarta Sans", size: 12 }, padding: 12 } } },
+    },
+  });
+
+  // Risk list
+  const highRisk = state.scored
+    .filter(c => c.litigation_risk === "high")
+    .sort((a, b) => b.litigation_score - a.litigation_score);
+  document.getElementById("riskList").innerHTML = highRisk.length
+    ? highRisk.slice(0, 8).map(c => `
+        <div class="risk-row">
+          <span class="risk-badge risk-high" style="flex-shrink:0">HIGH</span>
+          <div>
+            <div style="font-size:.8rem;color:var(--gray-700)">${h((c.text || "").slice(0, 130))}${(c.text || "").length > 130 ? "…" : ""}</div>
+            <div style="font-size:.7rem;color:var(--gray-400);margin-top:.1rem">${h(c.name || "")} · score ${c.significance_score}</div>
+            <div style="margin-top:.2rem">${(c.litigation_flags || []).map(f => `<span class="flag flag-lit" style="font-size:.65rem;margin:.1rem .1rem 0 0">${h(f)}</span>`).join("")}</div>
+          </div>
+        </div>`).join("")
+    : '<div style="color:var(--gray-400);font-size:.85rem;padding:.75rem">No high-risk comments detected.</div>';
+}
+
+// ─────────────────────────────────────────────
+// UTILITIES
+// ─────────────────────────────────────────────
+function exportCSV() {
+  if (!state.scored.length) return;
+  const headers = ["ID", "Name", "Score", "Significant", "Confidence", "Litigation Risk", "Lit Score", "CFR Sections", "Form Letter", "Comment"];
+  const rows = state.scored.map(c => [
+    c.id, c.name, c.significance_score, c.significant, c.sig_confidence,
+    c.litigation_risk, c.litigation_score,
+    Array.isArray(c.cfr_sections) ? c.cfr_sections.join("; ") : "General",
+    c.form_letter?.is_form_letter || false,
+    `"${(c.text || "").replace(/"/g, '""')}"`,
+  ]);
+  const csv = [headers, ...rows].map(r => r.join(",")).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = "policypulse_analysis.csv";
+  a.click();
+}
+
+function copyText(id) {
+  navigator.clipboard.writeText(document.getElementById(id).value);
+}
+
+function copyMemo() {
+  navigator.clipboard.writeText(document.getElementById("memoArea").value);
+}
+
+function h(s) {
+  return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ─────────────────────────────────────────────
+// APA COMPLIANCE CHECKER
+// ─────────────────────────────────────────────
+const APA_DESCS = {
+  acknowledged:       "Explicitly acknowledges the commenter",
+  reasoned_basis:     "Provides substantive reasoning",
+  cited_authority:    "Cites statute, regulation, or case",
+  addressed_substance:"Engages with the merits",
+  formal_register:    "Federal Register preamble style",
+};
+const apaTimers = {};
+
+function attachApaListeners() {
+  state.clusters.forEach((_, i) => {
+    const ta = document.getElementById(`resp-${i}`);
+    if (!ta) return;
+    triggerApaCheck(i);
+    ta.addEventListener("input", () => {
+      clearTimeout(apaTimers[i]);
+      apaTimers[i] = setTimeout(() => triggerApaCheck(i), 700);
+    });
+  });
+}
+
+async function triggerApaCheck(i) {
+  const ta = document.getElementById(`resp-${i}`);
+  if (!ta) return;
+  try {
+    const r = await fetch(`${API}/api/apa-check`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ draft: ta.value, mode: "rule" }),
+    });
+    updateApaPanel(i, await r.json(), false);
+  } catch {}
+}
+
+async function deepCheck(i) {
+  const ta  = document.getElementById(`resp-${i}`);
+  const btn = document.getElementById(`apa-ai-btn-${i}`);
+  if (!ta || !btn) return;
+  btn.innerHTML = '<span class="spinner spinner-dark"></span>';
+  btn.disabled = true;
+  try {
+    const r = await fetch(`${API}/api/apa-check`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ draft: ta.value, mode: "ai" }),
+    });
+    updateApaPanel(i, await r.json(), true);
+  } catch {}
+  btn.innerHTML = "🤖 AI Check";
+  btn.disabled = false;
+}
+
+function updateApaPanel(i, data, fromAI) {
+  const scoreEl    = document.getElementById(`apa-score-${i}`);
+  const criteriaEl = document.getElementById(`apa-criteria-${i}`);
+  const fillEl     = document.getElementById(`apa-fill-${i}`);
+  const sourceEl   = document.getElementById(`apa-source-${i}`);
+  if (!scoreEl || !criteriaEl) return;
+
+  const score = data.score ?? 0;
+  const level = data.level ?? "incomplete";
+  const cls   = { compliant: "apa-compliant", partial: "apa-partial", deficient: "apa-deficient" }[level] || "apa-na";
+
+  scoreEl.textContent = level === "incomplete" ? "—" : `${score}%`;
+  scoreEl.className   = `apa-score-badge ${cls}`;
+
+  if (fillEl) {
+    fillEl.style.width      = `${score}%`;
+    fillEl.style.background = score >= 80 ? "var(--green)" : score >= 50 ? "var(--yellow)" : "var(--red)";
+  }
+  if (sourceEl) sourceEl.textContent = fromAI ? "AI-evaluated" : "rule-based";
+
+  const dotMap = { pass: ["●", "dot-pass"], warn: ["◐", "dot-warn"], fail: ["○", "dot-fail"], incomplete: ["·", "dot-inc"] };
+  criteriaEl.innerHTML = (data.criteria || []).map(c => {
+    const [dot, dc] = dotMap[c.status] || ["·", "dot-inc"];
+    const note = c.note || APA_DESCS[c.id] || c.desc || "";
+    return `<div class="apa-criterion">
+      <span class="apa-dot ${dc}">${dot}</span>
+      <div>
+        <div class="apa-criterion-label">${h(c.label)}</div>
+        <div class="apa-criterion-note">${h(note)}</div>
+      </div>
+    </div>`;
+  }).join("");
+}
+</script>
+</body>
+</html>
