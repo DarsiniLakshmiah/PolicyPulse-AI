@@ -33,73 +33,207 @@ session_data = {
 }
 
 DEMO_COMMENTS = [
+    # ── Law firm comments (shared citations create citation nodes) ──
     {
         "id": "C-001",
-        "name": "Patricia Webb, HR Director",
+        "name": "Harrington & Cole LLP — Business Roundtable",
         "text": (
-            "This rule would severely damage our ability to protect proprietary training investments. "
-            "We spend $60,000 per technician. Without non-compete protections, competitors free-ride "
-            "on our investments. We cite the Commission's own RFA analysis under 5 U.S.C. §604 which "
-            "understates small business impact. We reserve all rights under the APA to challenge this rule."
+            "The Commission lacks statutory authority under FTC Act Section 6(g) to issue this rule. "
+            "Under the major questions doctrine articulated in West Virginia v. EPA, 597 U.S. 697 (2022), "
+            "Congress must speak clearly before an agency can regulate a matter of vast economic significance. "
+            "The economic analysis also fails Executive Order 12866 requirements. "
+            "We will seek judicial review under 5 U.S.C. §706 in the Fifth Circuit if finalized."
         ),
     },
     {
         "id": "C-002",
-        "name": "Carlos Reyes, Software Engineer",
+        "name": "Gibson, Dunn & Crutcher LLP — U.S. Chamber of Commerce",
         "text": (
-            "I couldn't accept a $30,000 raise because of a non-compete. These clauses trap workers "
-            "at below-market wages. The proposed rule correctly targets wage suppression. I support "
-            "full implementation."
+            "The rule is arbitrary and capricious under 5 U.S.C. §706(2)(A). Motor Vehicle Mfrs. "
+            "Ass'n v. State Farm, 463 U.S. 29 (1983). The Commission's own analysis acknowledges "
+            "causal uncertainty yet proceeds to a categorical ban without adequate justification. "
+            "West Virginia v. EPA, 597 U.S. 697 (2022) controls. The Chamber will seek injunctive "
+            "relief in the D.C. Circuit if finalized. We reserve all rights under the APA."
         ),
     },
     {
         "id": "C-003",
-        "name": "United Workers Alliance",
-        "text": "I support this rule. Workers deserve freedom to change jobs.",
+        "name": "Crowell & Moring LLP — National Federation of Independent Business",
+        "text": (
+            "The Commission's Regulatory Flexibility Act analysis under 5 U.S.C. §604 is fatally "
+            "deficient. The RFA requires a genuine analysis of small business alternatives — not the "
+            "cursory treatment provided here. Our survey of 1,847 NFIB members documents compliance "
+            "costs 340% higher than the Commission's estimate. We will seek judicial review under "
+            "5 U.S.C. §706 if the agency fails to correct this analysis before finalization."
+        ),
     },
+    # ── Industry groups ──
     {
         "id": "C-004",
-        "name": "United Workers Alliance",
-        "text": "I support this rule. Workers deserve freedom to change jobs.",
+        "name": "U.S. Chamber of Commerce",
+        "text": (
+            "The rule's definition in §910.1 is overbroad and captures agreements that protect "
+            "legitimate trade secrets under the Defend Trade Secrets Act, 18 U.S.C. §1836. "
+            "The Commission's own data shows non-competes are concentrated in high-wage, high-skill "
+            "roles where employer investment is substantial. Executive Order 12866 requires the agency "
+            "to demonstrate that benefits outweigh costs — a showing the NPRM fails to make."
+        ),
     },
     {
         "id": "C-005",
-        "name": "Dr. Anika Sharma, Nurse Practitioner",
+        "name": "Business Roundtable",
         "text": (
-            "Healthcare non-competes created staffing deserts. I am subject to a 50-mile non-compete "
-            "preventing practice in three HRSA-designated shortage areas in West Virginia. AMA's 2023 "
-            "study documents 4,000 similar cases. This is a public health emergency requiring "
-            "immediate regulatory action under CFR §910.3."
+            "Member companies have structured long-term R&D investment strategies around the "
+            "enforceability of existing agreements. The Commission's failure to consider these reliance "
+            "interests renders the rule arbitrary and capricious under Motor Vehicle Mfrs. Ass'n v. "
+            "State Farm, 463 U.S. 29 (1983). We urge the agency to adopt a salary threshold of "
+            "$150,000 as a less restrictive alternative consistent with Executive Order 12866."
         ),
     },
     {
         "id": "C-006",
-        "name": "Harrington & Cole LLP — Business Roundtable",
+        "name": "National Federation of Independent Business",
         "text": (
-            "The Commission lacks authority under FTC Act Section 6(g). See West Virginia v. EPA, "
-            "597 U.S. 697 (2022) — major questions doctrine applies. The economic analysis fails "
-            "Executive Order 12866 requirements. We will seek judicial review under 5 U.S.C. §706 "
-            "in the Fifth Circuit."
+            "Small businesses with fewer than 50 employees represent 89% of firms using non-competes "
+            "for workers earning under $50,000 per year per our survey of 1,200 members. The Commission's "
+            "Regulatory Flexibility Act analysis under 5 U.S.C. §604 does not adequately address this. "
+            "We request a 60-day extension of the comment period and a small business review panel."
         ),
     },
+    # ── Labor organizations ──
     {
         "id": "C-007",
-        "name": "James Thornton, IP Attorney",
+        "name": "AFL-CIO",
         "text": (
-            "The rule conflates non-competes with NDAs. Narrow §910.1 to exclude agreements "
-            "protecting trade secrets under the Defend Trade Secrets Act, 18 U.S.C. §1836. "
-            "A $100k salary threshold would protect workers without eliminating legitimate "
-            "protections for senior executives."
+            "The AFL-CIO and its 12.5 million members strongly support the proposed rule. Non-compete "
+            "agreements suppress wages, trap workers in unsafe conditions, and undermine collective "
+            "bargaining. Our economic analysis shows workers subject to non-competes earn 4.3% less "
+            "than comparable workers without them. The Commission has clear authority under FTC Act "
+            "Section 5 to prohibit unfair methods of competition. We urge immediate finalization."
         ),
     },
     {
         "id": "C-008",
-        "name": "U.S. Chamber of Commerce",
+        "name": "Service Employees International Union — SEIU",
         "text": (
-            "The rule is arbitrary and capricious under 5 U.S.C. §706(2)(A). Motor Vehicle Mfrs. "
-            "Ass'n v. State Farm, 463 U.S. 29 (1983). The Commission's own analysis acknowledges "
-            "causal uncertainty yet proceeds to a blanket ban. The Chamber will seek injunctive "
-            "relief in the Fifth Circuit if finalized."
+            "SEIU represents 2 million workers, many of whom are trapped by non-compete clauses in "
+            "low-wage service jobs. Healthcare workers in particular face 50-mile non-competes that "
+            "prevent them from leaving abusive employers. The Commission's proposed rule correctly "
+            "identifies non-competes as an unfair method of competition. We support full implementation "
+            "without a salary threshold carve-out."
+        ),
+    },
+    # ── Advocacy organizations ──
+    {
+        "id": "C-009",
+        "name": "Public Citizen",
+        "text": (
+            "Public Citizen submits these comments in strong support of the proposed rule. Non-compete "
+            "clauses function as a tax on worker mobility that accrues entirely to employers. The "
+            "Commission's economic analysis, drawing on Starr, Prescott & Bishara (2021), correctly "
+            "identifies wage suppression as the primary harm. We urge the Commission to reject any "
+            "salary threshold carve-out, which would undermine the rule's core protective purpose."
+        ),
+    },
+    # ── Individual workers (personal stories, low litigation score) ──
+    {
+        "id": "C-010",
+        "name": "Dr. Anika Sharma, Nurse Practitioner",
+        "text": (
+            "I am subject to a 50-mile non-compete preventing practice in three HRSA-designated "
+            "Health Professional Shortage Areas in rural West Virginia. AMA's 2023 study documents "
+            "4,000 similar cases nationwide. I have been unable to accept two positions at federally "
+            "qualified health centers because of this clause. This is a patient safety emergency."
+        ),
+    },
+    {
+        "id": "C-011",
+        "name": "Carlos Reyes, Software Engineer",
+        "text": (
+            "I turned down a $30,000 raise at a competing firm because of a non-compete I signed "
+            "on my first day without reading carefully. These clauses trap workers at below-market "
+            "wages and the company knows it. I fully support this rule and urge the Commission "
+            "to finalize it without delay."
+        ),
+    },
+    {
+        "id": "C-012",
+        "name": "Patricia Webb, Registered Nurse",
+        "text": (
+            "After 12 years at a hospital system, I was presented with a non-compete covering a "
+            "30-mile radius for two years. When I left for a better job, I had to drive 45 minutes "
+            "each way just to stay in my profession. My patients lost continuity of care. "
+            "Please finalize this rule."
+        ),
+    },
+    {
+        "id": "C-013",
+        "name": "Marcus Johnson, Restaurant Chef",
+        "text": (
+            "I signed a non-compete as a line cook making $14 an hour. I had no idea it would "
+            "prevent me from working at any restaurant within 10 miles for a year. I had to take "
+            "a job in retail to survive. This rule would protect workers like me who have no "
+            "bargaining power when we sign these agreements."
+        ),
+    },
+    # ── Form letter campaign A — worker support (4 identical) ──
+    {
+        "id": "C-014",
+        "name": "Amanda Torres",
+        "text": "I am writing in strong support of the FTC's proposed rule banning non-compete clauses. Non-competes hurt workers and limit economic freedom. Please finalize this rule without delay.",
+    },
+    {
+        "id": "C-015",
+        "name": "David Kim",
+        "text": "I am writing in strong support of the FTC's proposed rule banning non-compete clauses. Non-competes hurt workers and limit economic freedom. Please finalize this rule without delay.",
+    },
+    {
+        "id": "C-016",
+        "name": "Sandra Okonkwo",
+        "text": "I am writing in strong support of the FTC's proposed rule banning non-compete clauses. Non-competes hurt workers and limit economic freedom. Please finalize this rule without delay.",
+    },
+    {
+        "id": "C-017",
+        "name": "James Whitfield",
+        "text": "I am writing in strong support of the FTC's proposed rule banning non-compete clauses. Non-competes hurt workers and limit economic freedom. Please finalize this rule without delay.",
+    },
+    # ── Form letter campaign B — employer opposition (3 identical) ──
+    {
+        "id": "C-018",
+        "name": "Regional Employers Coalition",
+        "text": "We oppose the FTC's proposed non-compete rule. This regulation will destroy employer investment in workforce training and harm American competitiveness. Please withdraw this misguided proposal.",
+    },
+    {
+        "id": "C-019",
+        "name": "Midwest Business Alliance",
+        "text": "We oppose the FTC's proposed non-compete rule. This regulation will destroy employer investment in workforce training and harm American competitiveness. Please withdraw this misguided proposal.",
+    },
+    {
+        "id": "C-020",
+        "name": "Southeast Chamber Network",
+        "text": "We oppose the FTC's proposed non-compete rule. This regulation will destroy employer investment in workforce training and harm American competitiveness. Please withdraw this misguided proposal.",
+    },
+    # ── Academic / expert comments ──
+    {
+        "id": "C-021",
+        "name": "Prof. Elena Vasquez, Stanford Law School",
+        "text": (
+            "The Commission's reliance on Starr, Prescott & Bishara (2021) is methodologically sound "
+            "but the wage effect estimate should be updated using Johnson & Lipsitz (2022), which "
+            "finds stronger effects for workers below $60,000. The major questions doctrine under "
+            "West Virginia v. EPA, 597 U.S. 697 (2022) does not apply here — non-compete policy "
+            "is squarely within the FTC's traditional Section 5 authority."
+        ),
+    },
+    {
+        "id": "C-022",
+        "name": "State of California — Office of the Attorney General",
+        "text": (
+            "The State of California submits these comments to note that California Business & "
+            "Professions Code §16600 has prohibited non-competes since 1872 with no adverse effect "
+            "on employer investment or innovation. California's tech sector demonstrates that "
+            "strong worker mobility protections and business dynamism are complementary. "
+            "The Commission should reject any state preemption carve-out in the final rule."
         ),
     },
 ]
@@ -161,9 +295,9 @@ def import_rule():
                 text = attrs.get("comment", "").strip()
                 if not text or len(text) < 20:
                     continue
-                first = attrs.get("firstName", "")
-                last  = attrs.get("lastName", "")
-                org   = attrs.get("organization", "")
+                first = attrs.get("firstName") or ""
+                last  = attrs.get("lastName") or ""
+                org   = attrs.get("organization") or ""
                 name  = f"{first} {last}".strip() or org or "Public Commenter"
                 if org and org not in name:
                     name = f"{name}, {org}".strip(", ")
@@ -239,29 +373,34 @@ def process_comments():
         c for c in scored
         if c["significant"] and not c["form_letter"]["is_form_letter"]
     ]
+    # Fall back to ALL scored comments if ML marks nothing significant
+    # (happens when live API returns only opinion-statement comments)
+    if not sig_comments:
+        sig_comments = [c for c in scored if not c["form_letter"]["is_form_letter"]]
     texts = [c["text"] for c in sig_comments]
 
     try:
         clusters = cluster_and_name(texts, policy.get("title", ""))
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.warning("cluster_and_name failed: %s", e)
         clusters = [{
             "name": "Substantive Comments",
             "indices": list(range(len(texts))),
             "count": len(texts),
         }]
 
-    # Step 6: Draft Claude response per cluster
+    # Step 6: Draft response per cluster
     full_clusters = []
     for cl in clusters:
         samples = [texts[i] for i in cl["indices"][:3]]
         comment_ids = [sig_comments[i]["id"] for i in cl["indices"]]
         try:
             draft = draft_response(cl["name"], samples, policy.get("title", ""))
-        except Exception:
-            draft = (
-                f"The agency has carefully considered the comments addressing "
-                f"{cl['name']} and responds as follows in accordance with APA requirements..."
-            )
+        except Exception as e:
+            import logging
+            logging.warning("draft_response failed for cluster '%s': %s", cl["name"], e)
+            draft = f"[Draft generation failed: {e}. Check your GEMINI_API_KEY and retry.]"
         full_clusters.append({
             **cl,
             "comment_ids": comment_ids,

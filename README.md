@@ -289,6 +289,16 @@ policypulse-ai/
 
 ---
 
+## Known Limitations
+
+- **Regulations.gov DEMO_KEY rate limits** — Unauthenticated API keys are throttled aggressively. Individual comment detail calls frequently return 502 errors, which is why `train.py` bails out after 3 consecutive failures and falls back to the curated training set. Set `REGULATIONS_GOV_API_KEY` in `.env` with a real key (free at [api.data.gov](https://api.data.gov/signup/)) to avoid this entirely.
+
+- **ML model trained on a small corpus** — The significance classifier is trained on approximately 70 labeled examples drawn from 3 dockets. It works well for the demo but accuracy improves substantially with more training data. Adding a real Regulations.gov API key lets `train.py` pull and label hundreds of real comments, which meaningfully improves precision on edge cases.
+
+- **Crustdata org extraction misses informal org names** — The org detection logic uses regex patterns for known legal and corporate suffixes (LLC, LLP, Foundation, Chamber, etc.). Organizations with informal names — e.g. "The Brookings Institution", "Public Citizen", "Heritage Action" — are not detected and will not be queued for enrichment. A future improvement would be an NER-based extractor or a lookup against a known org list.
+
+---
+
 ## License
 
 MIT

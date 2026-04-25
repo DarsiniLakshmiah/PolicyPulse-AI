@@ -16,9 +16,11 @@ from sklearn.cluster import KMeans
 
 load_dotenv()
 
+OPENAI_KEY    = os.getenv("OPENAI_API_KEY", "").strip()
 GEMINI_KEY    = os.getenv("GEMINI_API_KEY", "").strip()
 GROQ_KEY      = os.getenv("GROQ_API_KEY", "").strip()
 ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY", "").strip()
+OPENAI_MODEL  = "gpt-4o-mini"
 GEMINI_MODEL  = "gemini-2.0-flash"
 GROQ_MODEL    = "llama-3.3-70b-versatile"
 CLAUDE_MODEL  = "claude-sonnet-4-6"
@@ -26,6 +28,8 @@ CLAUDE_MODEL  = "claude-sonnet-4-6"
 
 def active_llm() -> str:
     """Return which LLM is active."""
+    if OPENAI_KEY:
+        return f"openai/{OPENAI_MODEL}"
     if GEMINI_KEY:
         return f"gemini/{GEMINI_MODEL}"
     if GROQ_KEY:
@@ -38,22 +42,33 @@ def active_llm() -> str:
 def call_llm(prompt: str, max_tokens: int = 1000) -> str:
     """
     Priority: Gemini → Groq → Claude.
+    Retries once on 429 rate-limit errors with the suggested backoff.
     Raises RuntimeError if no key is available.
     """
-    if GEMINI_KEY:
+    import time
+
+    def _openai():
+        from openai import OpenAI
+        resp = OpenAI(api_key=OPENAI_KEY).chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=max_tokens,
+            temperature=0.3,
+        )
+        return resp.choices[0].message.content.strip()
+
+    def _gemini():
         import google.generativeai as genai
         genai.configure(api_key=GEMINI_KEY)
         model = genai.GenerativeModel(
             GEMINI_MODEL,
             generation_config=genai.GenerationConfig(max_output_tokens=max_tokens, temperature=0.3),
         )
-        resp = model.generate_content(prompt)
-        return resp.text.strip()
+        return model.generate_content(prompt).text.strip()
 
-    if GROQ_KEY:
+    def _groq():
         from groq import Groq
-        client = Groq(api_key=GROQ_KEY)
-        resp = client.chat.completions.create(
+        resp = Groq(api_key=GROQ_KEY).chat.completions.create(
             model=GROQ_MODEL,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=max_tokens,
@@ -61,19 +76,49 @@ def call_llm(prompt: str, max_tokens: int = 1000) -> str:
         )
         return resp.choices[0].message.content.strip()
 
-    if ANTHROPIC_KEY:
+    def _claude():
         import anthropic
-        client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
-        resp = client.messages.create(
+        resp = anthropic.Anthropic(api_key=ANTHROPIC_KEY).messages.create(
             model=CLAUDE_MODEL,
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}],
         )
         return resp.content[0].text.strip()
 
-    raise RuntimeError(
-        "No LLM key found. Add GEMINI_API_KEY, GROQ_API_KEY, or ANTHROPIC_API_KEY to .env"
-    )
+    providers = []
+    if OPENAI_KEY:
+        providers.append(("openai", _openai))
+    if GEMINI_KEY:
+        providers.append(("gemini", _gemini))
+    if GROQ_KEY:
+        providers.append(("groq", _groq))
+    if ANTHROPIC_KEY:
+        providers.append(("claude", _claude))
+
+    if not providers:
+        raise RuntimeError(
+            "No LLM key found. Add GEMINI_API_KEY, GROQ_API_KEY, or ANTHROPIC_API_KEY to .env"
+        )
+
+    last_err = None
+    for name, fn in providers:
+        for attempt in range(2):
+            try:
+                return fn()
+            except Exception as e:
+                err_str = str(e)
+                if "429" in err_str:
+                    # Parse suggested retry delay from error message, default 30s
+                    import re as _re
+                    m = _re.search(r"retry in ([\d.]+)s", err_str)
+                    wait = float(m.group(1)) + 1 if m else 30
+                    if attempt == 0:
+                        time.sleep(min(wait, 60))
+                        continue  # retry same provider
+                last_err = e
+                break  # move to next provider
+
+    raise RuntimeError(f"All LLM providers failed. Last error: {last_err}")
 
 
 def summarize_policy(title: str, text: str) -> str:
@@ -86,13 +131,29 @@ def summarize_policy(title: str, text: str) -> str:
     return call_llm(prompt, max_tokens=150)
 
 
+def _keyword_cluster_name(texts: list) -> str:
+    """Extract top keywords from a cluster as a readable fallback name."""
+    from sklearn.feature_extraction.text import TfidfVectorizer as _TV
+    try:
+        v = _TV(max_features=200, stop_words="english", ngram_range=(1, 2))
+        X = v.fit_transform(texts)
+        scores = X.sum(axis=0).A1
+        top = sorted(zip(v.get_feature_names_out(), scores), key=lambda x: -x[1])
+        keywords = [w for w, _ in top[:3] if len(w) > 3]
+        return " · ".join(keywords).title() if keywords else "Substantive Comments"
+    except Exception:
+        return "Substantive Comments"
+
+
 def cluster_and_name(comment_texts: list, policy_title: str) -> list:
     """
-    TF-IDF KMeans clustering, then LLM names each cluster.
+    TF-IDF KMeans clustering, then one batched LLM call names all clusters.
+    Falls back to keyword extraction if LLM is unavailable.
     Returns list of dicts: {name, indices, count}.
     """
     if len(comment_texts) < 3:
-        return [{"name": "General comments", "indices": list(range(len(comment_texts))), "count": len(comment_texts)}]
+        name = _keyword_cluster_name(comment_texts)
+        return [{"name": name, "indices": list(range(len(comment_texts))), "count": len(comment_texts)}]
 
     n_clusters = min(4, len(comment_texts))
     vectorizer = TfidfVectorizer(max_features=500, stop_words="english")
@@ -104,20 +165,47 @@ def cluster_and_name(comment_texts: list, policy_title: str) -> list:
     for idx, label in enumerate(labels):
         clusters.setdefault(int(label), []).append(idx)
 
+    # Build keyword fallback names first (always available)
+    keyword_names = {
+        label: _keyword_cluster_name([comment_texts[i] for i in indices])
+        for label, indices in clusters.items()
+    }
+
+    # One batched LLM call for all cluster names
+    cluster_names = dict(keyword_names)  # start with keyword fallbacks
+    try:
+        sections = []
+        for label, indices in clusters.items():
+            sample = " | ".join([comment_texts[i][:120] for i in indices[:3]])
+            sections.append(f"Cluster {label}: {sample}")
+
+        prompt = (
+            f'You are naming comment clusters from a federal rulemaking on "{policy_title}".\n'
+            f"For each cluster below, give a precise 4-6 word name describing the legal or policy theme.\n"
+            f"Reply with ONLY a JSON object mapping cluster number to name. Example: {{\"0\": \"APA Procedural Challenges\", \"1\": \"Worker Wage Suppression\"}}\n\n"
+            + "\n\n".join(sections)
+        )
+        raw = call_llm(prompt, max_tokens=120)
+        # Parse JSON from response
+        import json as _json
+        m = re.search(r"\{.*\}", raw, re.DOTALL)
+        if m:
+            parsed = _json.loads(m.group())
+            for label in clusters:
+                key = str(label)
+                if key in parsed and parsed[key].strip():
+                    cluster_names[label] = parsed[key].strip()
+    except Exception as e:
+        import logging
+        logging.warning("Cluster naming LLM call failed, using keywords: %s", e)
+
     named = []
     for label, indices in clusters.items():
-        sample = " | ".join([comment_texts[i][:100] for i in indices[:3]])
-        prompt = (
-            f'These public comments on "{policy_title}" share a common theme.\n'
-            f"Comments: {sample}\n"
-            f"Give this cluster a name in 4-6 words. Respond with ONLY the name."
-        )
-        try:
-            name = call_llm(prompt, max_tokens=20)
-        except Exception:
-            name = f"Theme {label + 1}"
-        named.append({"name": name, "indices": indices, "count": len(indices)})
-
+        named.append({
+            "name": cluster_names[label],
+            "indices": indices,
+            "count": len(indices),
+        })
     return named
 
 
