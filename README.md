@@ -110,21 +110,21 @@ Quorum and FiscalNote are excellent legislative tracking platforms built for lob
 │ ml_scorer   │ │ response_ │ │          External APIs             │
 │ .py         │ │ gen.py    │ │                                    │
 │             │ │           │ │  Regulations.gov — live comments   │
-│ TF-IDF +    │ │ Gemini    │ │  CourtListener   — APA case law    │
+│ TF-IDF +    │ │ OpenAI    │ │  CourtListener   — APA case law    │
 │ Logistic    │ │ (primary) │ │  Crustdata       — org enrichment  │
-│ Regression  │ │ Groq      │ │                                    │
+│ Regression  │ │ Gemini    │ │                                    │
 │             │ │ (fallback)│ └────────────────────────────────────┘
-│ Significance│ │ Claude    │
+│ Significance│ │ Groq      │
 │ scoring     │ │ (fallback)│ ┌────────────────────────────────────┐
-│             │ │           │ │         crustdata.py               │
-│ Litigation  │ │ Cluster   │ │  POST /screener/company            │
-│ risk        │ │ naming    │ │  Enriches high-sig org nodes only  │
-│             │ │ Response  │ │  headcount · funding · HQ          │
-│ Form letter │ │ drafting  │ │  job openings · industry           │
-│ detection   │ │ OGC memo  │ └────────────────────────────────────┘
-│             │ │ APA eval  │
-│ Network     │ └───────────┘ ┌────────────────────────────────────┐
-│ graph build │               │         apa_checker.py             │
+│             │ │ Claude    │ │         crustdata.py               │
+│ Litigation  │ │ (fallback)│ │  POST /screener/company            │
+│ risk        │ │ Cluster   │ │  Enriches high-sig org nodes only  │
+│             │ │ naming    │ │  headcount · funding · HQ          │
+│ Form letter │ │ Response  │ │  job openings · industry           │
+│ detection   │ │ drafting  │ └────────────────────────────────────┘
+│             │ │ OGC memo  │
+│ Network     │ │ APA eval  │ ┌────────────────────────────────────┐
+│ graph build │ └───────────┘ │         apa_checker.py             │
 └─────────────┘               │  Rule-based: regex patterns        │
                               │  AI mode: LLM self-evaluation      │
                               │  5 APA §553 criteria scored live   │
@@ -173,7 +173,8 @@ User enters docket ID
 | **Backend** | Python 3.11 + Flask | REST API server |
 | **ML — Scoring** | scikit-learn (TF-IDF + LogisticRegression) | Comment significance classifier |
 | **ML — Clustering** | scikit-learn (KMeans) | Theme grouping |
-| **LLM — Primary** | Google Gemini 2.0 Flash | Cluster naming · response drafting · OGC memo |
+| **LLM — Primary** | OpenAI GPT-4o Mini | Cluster naming · response drafting · OGC memo |
+| **LLM — Fallback** | Google Gemini 2.0 Flash | Same tasks |
 | **LLM — Fallback** | Groq (Llama 3.3 70B) | Same tasks, fast inference |
 | **LLM — Fallback** | Anthropic Claude Sonnet | Same tasks |
 | **Org enrichment** | Crustdata `/screener/company` | Firmographics for commenter orgs |
@@ -207,11 +208,18 @@ copy .env.example .env        # Windows
 Edit `.env`:
 
 ```env
-GEMINI_API_KEY=your_key            # required  — aistudio.google.com
+# LLM — at least one key required; priority: OpenAI → Gemini → Groq → Claude
+OPENAI_API_KEY=sk-...              # optional  — platform.openai.com
+GEMINI_API_KEY=your_key            # optional  — aistudio.google.com
+GROQ_API_KEY=your_key              # optional  — console.groq.com
+ANTHROPIC_API_KEY=sk-ant-...       # optional  — console.anthropic.com
+
 REGULATIONS_GOV_API_KEY=your_key   # optional  — improves live comment fetch
 COURTLISTENER_TOKEN=your_token     # optional  — authenticated case search
 CRUSTDATA_API_KEY=your_key         # optional  — org enrichment
 ```
+
+> At least one LLM key is required. The first key found in the list above wins — set whichever you have.
 
 ### 3. Train the ML model (one-time)
 
@@ -271,7 +279,7 @@ Recognized column names (case-insensitive): `comment` / `text` / `body` for the 
 policypulse-ai/
 ├── app.py              # Flask server — all API routes
 ├── ml_scorer.py        # Classifier, litigation risk, network builder
-├── response_gen.py     # LLM calls — Gemini / Groq / Claude
+├── response_gen.py     # LLM calls — OpenAI / Gemini / Groq / Claude
 ├── train.py            # Fetch real data + train + save model
 ├── crustdata.py        # Crustdata org enrichment client
 ├── apa_checker.py      # APA §553 compliance checker
